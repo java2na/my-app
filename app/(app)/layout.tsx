@@ -1,0 +1,17 @@
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { MobileViewport } from "@/components/layout/mobile-viewport";
+import { Suspense } from "react";
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <MobileViewport
+      footer={
+        <Suspense>
+          <MobileBottomNav />
+        </Suspense>
+      }
+    >
+      {children}
+    </MobileViewport>
+  );
+}

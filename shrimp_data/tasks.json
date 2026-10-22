@@ -1,0 +1,272 @@
+{
+  "tasks": [
+    {
+      "id": "3c096ecc-d2ed-4290-b43c-e375409f2228",
+      "name": "lib/types/ 임시 프론트엔드 타입 정의 생성 (Task 002)",
+      "description": "PRD 데이터 모델(users/events/event_participants)에 대응하는 프론트엔드 임시 타입을 lib/types/ 아래 신설한다. event.ts(Event, EventStatus='upcoming'|'ongoing'|'ended'), participant.ts(EventParticipant, ParticipantRole='host'|'participant'), user.ts(UserProfile — PRD의 role 필드를 포함하되 실제 profiles 테이블엔 없음을 주석으로 명시), api.ts(이벤트 생성/조회/수정/삭제, 참여 처리용 요청/응답 타입과 공용 ApiResponse<T> 제네릭), index.ts(전체 재export). 이벤트 카드/참여자 프로필 카드 등 Phase 2(Task 003~005)에서 쓰일 컴포넌트 Props 타입(EventCardProps, ParticipantCardProps 등)도 함께 정의한다.",
+      "notes": "database.types.ts는 절대 수정하지 않는다. 이 타입들은 전부 임시이며 Task 007에서 실제 DB 타입으로 교체될 예정임을 각 파일에 명시한다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-22T09:17:20.743Z",
+      "updatedAt": "2026-10-22T16:03:45.639Z",
+      "relatedFiles": [
+        {
+          "path": "lib/types/event.ts",
+          "type": "CREATE",
+          "description": "이벤트 임시 타입"
+        },
+        {
+          "path": "lib/types/participant.ts",
+          "type": "CREATE",
+          "description": "참여자 임시 타입"
+        },
+        {
+          "path": "lib/types/user.ts",
+          "type": "CREATE",
+          "description": "사용자 프로필 임시 타입"
+        },
+        {
+          "path": "lib/types/api.ts",
+          "type": "CREATE",
+          "description": "API 요청/응답 임시 타입"
+        },
+        {
+          "path": "lib/types/components.ts",
+          "type": "CREATE",
+          "description": "컴포넌트 Props 임시 타입"
+        },
+        {
+          "path": "lib/types/index.ts",
+          "type": "CREATE",
+          "description": "타입 재export 진입점"
+        },
+        {
+          "path": "lib/supabase/database.types.ts",
+          "type": "REFERENCE",
+          "description": "실제 DB 타입(수정 금지, 분리 기준 확인용)"
+        }
+      ],
+      "implementationGuide": "1) lib/types/event.ts: export type EventStatus = 'upcoming' | 'ongoing' | 'ended'; export interface Event { id: string; title: string; description: string | null; location: string; eventDate: string; coverImageUrl: string | null; inviteCode: string; status: EventStatus; createdBy: string; createdAt: string; updatedAt: string }. 파일 최상단에 '임시 타입 — Task 007에서 실제 DB 스키마 타입(lib/supabase/database.types.ts)으로 교체 예정' 주석.\n2) lib/types/participant.ts: export type ParticipantRole = 'host' | 'participant'; export interface EventParticipant { id: string; eventId: string; userId: string; role: ParticipantRole; joinedAt: string }.\n3) lib/types/user.ts: export interface UserProfile { id: string; email: string; name: string | null; avatarUrl: string | null; role: 'user' | 'admin'; createdAt: string }. 주석으로 'role은 PRD 스펙이며 profiles 테이블에는 아직 없음(shrimp-rules.md 참고)' 명시.\n4) lib/types/api.ts: export interface ApiResponse<T> { data: T | null; error: string | null }. 이벤트 CRUD/참여 처리용 요청 타입(CreateEventInput, UpdateEventInput, JoinEventInput 등) 정의.\n5) lib/types/components.ts: EventCardProps, ParticipantCardProps 등 컴포넌트 Props 타입 정의(필드는 Event/EventParticipant/UserProfile을 Pick/조합해서 구성).\n6) lib/types/index.ts: 위 전체 export * 재노출.\n네이밍은 기존 lib/utils.ts, lib/supabase/*.ts와 동일하게 camelCase 함수/변수, PascalCase 타입 컨벤션을 따른다.",
+      "verificationCriteria": "npx tsc --noEmit 통과. lib/types/index.ts에서 모든 타입이 재export되고, 각 파일 상단에 '임시 타입' 주석이 존재. database.types.ts는 변경되지 않음.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 1(\"애플리케이션 골격 구축\") 구현. Task 001(프로젝트 구조 및 라우팅 설정)과 Task 002(타입 정의)를 7개 서브태스크로 분할한다. 핵심 설계: (1) PRD 13페이지 중 기존 `/`, `/auth/login` 2개는 재사용하고 나머지 11개를 신규 생성. (2) 모바일 영역(이벤트 목록/생성/상세/수정, 프로필)은 `app/(app)/` 라우트 그룹으로 묶어 하단 탭바 레이아웃을 공유. (3) 관리자 영역(대시보드/이벤트/사용자/통계)은 `app/admin/(dashboard)/` 라우트 그룹으로 묶어 좌측 사이드바 레이아웃을 공유하고, `/admin/login`은 그 그룹 밖에 둬 사이드바 없이 노출. (4) `/join/[invite_code]`는 공개 라우트로 레이아웃 그룹 없이 루트 layout만 적용. (5) `lib/supabase/proxy.ts`의 인증 리다이렉트 allowlist에 `/join`, `/admin/login`을 추가하고 죽은 `/instruments` 예외를 제거, `/admin` role 체크는 Phase 3(Task 008) 자리로 TODO만 남김. (6) `lib/types/`에 Event/EventParticipant/UserProfile 등 임시 프론트엔드 타입을 신설하고 `lib/supabase/database.types.ts`(생성 파일, 실제 DB 타입)와 혼용되지 않도록 분리. 기존 `app/protected/*`, 인증 페이지/컴포넌트, `database.types.ts`는 전혀 수정하지 않는다. 모든 신규 page.tsx는 Phase 1 범위이므로 플레이스홀더 텍스트만 반환하는 서버 컴포넌트로 작성하고 실제 UI/비즈니스 로직은 Phase 2/3로 미룬다.",
+      "summary": "lib/types/ 아래 event.ts, participant.ts, user.ts, api.ts, components.ts, index.ts 6개 파일을 생성. 모든 파일 상단에 \"임시 타입 — Task 007에서 교체 예정\" 주석을 명시했고, user.ts에는 role 필드가 profiles 테이블에 아직 없다는 점을 추가로 명시. index.ts에서 전체 재export. database.types.ts는 변경하지 않음. npx tsc --noEmit 통과 확인.",
+      "completedAt": "2026-10-22T16:03:45.637Z"
+    },
+    {
+      "id": "d5c83873-49e4-48d1-94f1-b8ef79ec1620",
+      "name": "proxy.ts 공개 라우트 allowlist 업데이트",
+      "description": "lib/supabase/proxy.ts의 인증 리다이렉트 조건에 신규 공개 라우트 /join, /admin/login을 추가하고 죽은 /instruments 예외를 제거한다. /admin 영역의 실제 role 기반 접근 제어는 Phase 3(Task 008) 범위이므로 TODO 주석만 남긴다.",
+      "notes": "CLAUDE.md: proxy.ts의 redirect allowlist는 config.matcher와 별개 — matcher는 수정하지 않는다. shrimp-rules.md: 이 함수를 건드리는 김에 죽은 /instruments 항목을 정리해도 됨.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-22T09:17:20.743Z",
+      "updatedAt": "2026-10-22T16:05:47.582Z",
+      "relatedFiles": [
+        {
+          "path": "lib/supabase/proxy.ts",
+          "type": "TO_MODIFY",
+          "description": "공개 라우트 allowlist 수정, 죽은 /instruments 예외 제거",
+          "lineStart": 50,
+          "lineEnd": 62
+        }
+      ],
+      "implementationGuide": "updateSession() 내부의 if 조건:\n```\nif (\n  request.nextUrl.pathname !== \"/\" &&\n  !user &&\n  !request.nextUrl.pathname.startsWith(\"/login\") &&\n  !request.nextUrl.pathname.startsWith(\"/auth\") &&\n  !request.nextUrl.pathname.startsWith(\"/join\") &&\n  !request.nextUrl.pathname.startsWith(\"/admin/login\")\n) {\n  ...redirect to /auth/login\n}\n// TODO(Task 008): /admin/* 경로는 로그인 후 claims의 role === 'admin' 여부를 추가로 체크해야 함\n```\n기존 /instruments, /instruments/ 체크 두 줄은 제거한다. 다른 로직(쿠키 처리, getClaims 호출 순서)은 절대 변경하지 않는다.",
+      "verificationCriteria": "/join/[invite_code], /admin/login이 비로그인 상태에서 /auth/login으로 리다이렉트되지 않는다. /instruments 문자열이 파일에서 더 이상 존재하지 않는다. 기존 인증 흐름(보호 라우트 리다이렉트)이 그대로 동작한다.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 1(\"애플리케이션 골격 구축\") 구현. Task 001(프로젝트 구조 및 라우팅 설정)과 Task 002(타입 정의)를 7개 서브태스크로 분할한다. 핵심 설계: (1) PRD 13페이지 중 기존 `/`, `/auth/login` 2개는 재사용하고 나머지 11개를 신규 생성. (2) 모바일 영역(이벤트 목록/생성/상세/수정, 프로필)은 `app/(app)/` 라우트 그룹으로 묶어 하단 탭바 레이아웃을 공유. (3) 관리자 영역(대시보드/이벤트/사용자/통계)은 `app/admin/(dashboard)/` 라우트 그룹으로 묶어 좌측 사이드바 레이아웃을 공유하고, `/admin/login`은 그 그룹 밖에 둬 사이드바 없이 노출. (4) `/join/[invite_code]`는 공개 라우트로 레이아웃 그룹 없이 루트 layout만 적용. (5) `lib/supabase/proxy.ts`의 인증 리다이렉트 allowlist에 `/join`, `/admin/login`을 추가하고 죽은 `/instruments` 예외를 제거, `/admin` role 체크는 Phase 3(Task 008) 자리로 TODO만 남김. (6) `lib/types/`에 Event/EventParticipant/UserProfile 등 임시 프론트엔드 타입을 신설하고 `lib/supabase/database.types.ts`(생성 파일, 실제 DB 타입)와 혼용되지 않도록 분리. 기존 `app/protected/*`, 인증 페이지/컴포넌트, `database.types.ts`는 전혀 수정하지 않는다. 모든 신규 page.tsx는 Phase 1 범위이므로 플레이스홀더 텍스트만 반환하는 서버 컴포넌트로 작성하고 실제 UI/비즈니스 로직은 Phase 2/3로 미룬다.",
+      "summary": "lib/supabase/proxy.ts의 리다이렉트 allowlist에 /join, /admin/login을 추가하고 죽은 /instruments 예외 두 줄을 제거. Task 008을 위한 /admin role 체크 TODO 주석을 추가. 쿠키 처리 및 getClaims 호출 순서는 변경하지 않음. tsc --noEmit, eslint 모두 통과.",
+      "completedAt": "2026-10-22T16:05:47.579Z"
+    },
+    {
+      "id": "0519ac62-c355-4e04-9390-94fe71cde39b",
+      "name": "모바일 공통 레이아웃 골격 (하단 내비게이션 바) 구현",
+      "description": "주최자/참여자가 공유하는 모바일 전용 라우트 그룹 app/(app)/layout.tsx와 하단 내비게이션 바 컴포넌트 components/layout/mobile-bottom-nav.tsx를 신설한다. 탭은 PRD 메뉴 구조대로 내 이벤트(/events), 새 이벤트 만들기(/events/new), 프로필(/profile) 3개로 구성한다.",
+      "notes": "라우트 그룹 폴더명은 반드시 소괄호 (app) 그대로 사용 — URL에는 노출되지 않는다. 기존 app/protected/layout.tsx는 수정하지 않는다. components/ui/button 등 이미 설치된 컴포넌트만 사용(Avatar/Dialog 등 미설치 컴포넌트 사용 금지).",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-22T09:17:20.743Z",
+      "updatedAt": "2026-10-22T16:07:27.182Z",
+      "relatedFiles": [
+        {
+          "path": "components/layout/mobile-bottom-nav.tsx",
+          "type": "CREATE",
+          "description": "하단 내비게이션 바 컴포넌트"
+        },
+        {
+          "path": "app/(app)/layout.tsx",
+          "type": "CREATE",
+          "description": "모바일 공통 레이아웃"
+        },
+        {
+          "path": "app/protected/layout.tsx",
+          "type": "REFERENCE",
+          "description": "기존 레이아웃 컨벤션 참고용(수정 안 함)"
+        }
+      ],
+      "implementationGuide": "1) components/layout/mobile-bottom-nav.tsx: 'use client' 컴포넌트. usePathname()으로 현재 경로를 받아 활성 탭을 Tailwind 시맨틱 토큰(text-primary 등)으로 강조. 탭 배열 [{href:'/events', label:'내 이벤트', icon: Lucide CalendarIcon}, {href:'/events/new', label:'새 이벤트', icon: PlusIcon}, {href:'/profile', label:'프로필', icon: UserIcon}] 형태로 map 렌더링. 높이 64px(h-16), position fixed bottom, 터치 영역 48px 이상 보장.\n2) app/(app)/layout.tsx: children을 렌더링하고 하단에 <MobileBottomNav />를 고정 배치하는 서버 컴포넌트. app/protected/layout.tsx의 구조(헤더 없이 심플하게)를 참고하되 복제하지 않고 새로 작성.\n3) 이 레이아웃은 app/(app)/ 디렉토리 하위 모든 page.tsx에 자동 적용됨(Next.js route group 규칙).",
+      "verificationCriteria": "app/(app)/ 하위에 임시 page.tsx를 둬서 빌드 시 하단 탭바가 렌더링되고, 탭 클릭 시 해당 경로로 이동하며 현재 경로 탭이 강조 표시됨. npm run lint 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 1(\"애플리케이션 골격 구축\") 구현. Task 001(프로젝트 구조 및 라우팅 설정)과 Task 002(타입 정의)를 7개 서브태스크로 분할한다. 핵심 설계: (1) PRD 13페이지 중 기존 `/`, `/auth/login` 2개는 재사용하고 나머지 11개를 신규 생성. (2) 모바일 영역(이벤트 목록/생성/상세/수정, 프로필)은 `app/(app)/` 라우트 그룹으로 묶어 하단 탭바 레이아웃을 공유. (3) 관리자 영역(대시보드/이벤트/사용자/통계)은 `app/admin/(dashboard)/` 라우트 그룹으로 묶어 좌측 사이드바 레이아웃을 공유하고, `/admin/login`은 그 그룹 밖에 둬 사이드바 없이 노출. (4) `/join/[invite_code]`는 공개 라우트로 레이아웃 그룹 없이 루트 layout만 적용. (5) `lib/supabase/proxy.ts`의 인증 리다이렉트 allowlist에 `/join`, `/admin/login`을 추가하고 죽은 `/instruments` 예외를 제거, `/admin` role 체크는 Phase 3(Task 008) 자리로 TODO만 남김. (6) `lib/types/`에 Event/EventParticipant/UserProfile 등 임시 프론트엔드 타입을 신설하고 `lib/supabase/database.types.ts`(생성 파일, 실제 DB 타입)와 혼용되지 않도록 분리. 기존 `app/protected/*`, 인증 페이지/컴포넌트, `database.types.ts`는 전혀 수정하지 않는다. 모든 신규 page.tsx는 Phase 1 범위이므로 플레이스홀더 텍스트만 반환하는 서버 컴포넌트로 작성하고 실제 UI/비즈니스 로직은 Phase 2/3로 미룬다.",
+      "summary": "components/layout/mobile-bottom-nav.tsx(클라이언트 컴포넌트, usePathname 기반 활성 탭 강조, 48px 이상 터치 영역)와 app/(app)/layout.tsx(하단 탭바 고정 배치)를 생성. 임시 verify-tmp 라우트로 production build를 돌려 (app) 그룹 레이아웃이 정상 적용됨을 확인 후 삭제. 폴더명이 _로 시작하면 Next.js가 private 라우트로 취급해 라우팅에서 제외된다는 점을 검증 중 발견해 verify-tmp로 교체. npx tsc --noEmit, eslint, npm run build 모두 통과.",
+      "completedAt": "2026-10-22T16:07:27.180Z"
+    },
+    {
+      "id": "c788a2dc-f81f-437c-b69e-87adcdeb6067",
+      "name": "모바일 영역 5개 페이지 골격 생성 (/events, /events/new, /events/[id], /events/[id]/edit, /profile)",
+      "description": "app/(app)/ 라우트 그룹 하위에 내 이벤트 목록, 이벤트 생성, 이벤트 상세, 이벤트 수정, 프로필 5개 페이지의 최소 골격(플레이스홀더 텍스트만 출력하는 서버 컴포넌트)을 생성한다.",
+      "notes": "Next.js 15에서 동적 라우트의 params는 Promise이므로 await 필수(CLAUDE.md의 Next.js 15 가이드 참고). 실제 데이터 패칭/권한 분기는 Phase 2/3에서 구현.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "0519ac62-c355-4e04-9390-94fe71cde39b"
+        },
+        {
+          "taskId": "3c096ecc-d2ed-4290-b43c-e375409f2228"
+        }
+      ],
+      "createdAt": "2026-10-22T09:17:20.743Z",
+      "updatedAt": "2026-10-22T16:09:21.582Z",
+      "relatedFiles": [
+        {
+          "path": "app/(app)/events/page.tsx",
+          "type": "CREATE",
+          "description": "내 이벤트 목록 골격"
+        },
+        {
+          "path": "app/(app)/events/new/page.tsx",
+          "type": "CREATE",
+          "description": "이벤트 생성 골격"
+        },
+        {
+          "path": "app/(app)/events/[id]/page.tsx",
+          "type": "CREATE",
+          "description": "이벤트 상세 골격"
+        },
+        {
+          "path": "app/(app)/events/[id]/edit/page.tsx",
+          "type": "CREATE",
+          "description": "이벤트 수정 골격"
+        },
+        {
+          "path": "app/(app)/profile/page.tsx",
+          "type": "CREATE",
+          "description": "프로필 골격"
+        }
+      ],
+      "implementationGuide": "각 page.tsx는 비즈니스 로직 없이 페이지 식별 텍스트만 반환:\n- app/(app)/events/page.tsx → export default function EventsPage() { return <div>내 이벤트 목록 (TODO: Task 004/005)</div> }\n- app/(app)/events/new/page.tsx → EventNewPage, '이벤트 생성 (TODO: Task 004)'\n- app/(app)/events/[id]/page.tsx → async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) { const { id } = await params; return <div>이벤트 상세: {id} (TODO: Task 004/005)</div> } — Next.js 15 비동기 params 컨벤션 준수\n- app/(app)/events/[id]/edit/page.tsx → EventEditPage, params.id echo, '이벤트 수정 (TODO: Task 004)'\n- app/(app)/profile/page.tsx → ProfilePage, '프로필 (TODO: Task 004/005)'\n모든 export는 app/protected/page.tsx와 동일하게 `export default function XxxPage()` 명명.",
+      "verificationCriteria": "npm run dev 실행 후 /events, /events/new, /events/test-id, /events/test-id/edit, /profile 5개 경로 모두 200 응답과 하단 탭바가 포함된 화면을 반환. npx tsc --noEmit 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 1(\"애플리케이션 골격 구축\") 구현. Task 001(프로젝트 구조 및 라우팅 설정)과 Task 002(타입 정의)를 7개 서브태스크로 분할한다. 핵심 설계: (1) PRD 13페이지 중 기존 `/`, `/auth/login` 2개는 재사용하고 나머지 11개를 신규 생성. (2) 모바일 영역(이벤트 목록/생성/상세/수정, 프로필)은 `app/(app)/` 라우트 그룹으로 묶어 하단 탭바 레이아웃을 공유. (3) 관리자 영역(대시보드/이벤트/사용자/통계)은 `app/admin/(dashboard)/` 라우트 그룹으로 묶어 좌측 사이드바 레이아웃을 공유하고, `/admin/login`은 그 그룹 밖에 둬 사이드바 없이 노출. (4) `/join/[invite_code]`는 공개 라우트로 레이아웃 그룹 없이 루트 layout만 적용. (5) `lib/supabase/proxy.ts`의 인증 리다이렉트 allowlist에 `/join`, `/admin/login`을 추가하고 죽은 `/instruments` 예외를 제거, `/admin` role 체크는 Phase 3(Task 008) 자리로 TODO만 남김. (6) `lib/types/`에 Event/EventParticipant/UserProfile 등 임시 프론트엔드 타입을 신설하고 `lib/supabase/database.types.ts`(생성 파일, 실제 DB 타입)와 혼용되지 않도록 분리. 기존 `app/protected/*`, 인증 페이지/컴포넌트, `database.types.ts`는 전혀 수정하지 않는다. 모든 신규 page.tsx는 Phase 1 범위이므로 플레이스홀더 텍스트만 반환하는 서버 컴포넌트로 작성하고 실제 UI/비즈니스 로직은 Phase 2/3로 미룬다.",
+      "summary": "app/(app)/{events,events/new,events/[id],events/[id]/edit,profile}/page.tsx 5개 골격 페이지 생성. 동적 라우트([id], [id]/edit)는 Next.js 15 비동기 params 컨벤션을 따르되, next.config.ts의 cacheComponents 실험 플래그 때문에 params 접근과 MobileBottomNav의 usePathname을 각각 Suspense로 감싸야 프로덕션 빌드가 통과함을 발견해 수정. npm run build, npm run lint, npx tsc --noEmit 모두 통과. 비로그인 상태에서 5개 경로 모두 307로 /auth/login 리다이렉트되는 것을 curl로 확인 — 이는 PRD상 인증 필수 페이지이므로 proxy.ts 보호가 의도대로 동작하는 것임(버그 아님).",
+      "completedAt": "2026-10-22T16:09:21.581Z"
+    },
+    {
+      "id": "9b74570f-cbde-4fc2-969f-cfa169d014c2",
+      "name": "/join/[invite_code] 초대 참여 페이지 골격 생성",
+      "description": "공개 라우트인 초대 링크 참여 페이지의 최소 골격을 app/join/[invite_code]/page.tsx에 생성한다. 레이아웃 그룹에 속하지 않아 하단 탭바/사이드바 없이 루트 layout.tsx만 적용된다.",
+      "notes": "이 작업은 'proxy.ts 공개 라우트 allowlist 업데이트' 작업이 선행되어야 실제로 비로그인 접근이 리다이렉트되지 않음을 수동 확인할 수 있다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "d5c83873-49e4-48d1-94f1-b8ef79ec1620"
+        }
+      ],
+      "createdAt": "2026-10-22T09:17:20.743Z",
+      "updatedAt": "2026-10-22T16:10:45.424Z",
+      "relatedFiles": [
+        {
+          "path": "app/join/[invite_code]/page.tsx",
+          "type": "CREATE",
+          "description": "초대 참여 페이지 골격"
+        }
+      ],
+      "implementationGuide": "app/join/[invite_code]/page.tsx: async function JoinPage({ params }: { params: Promise<{ invite_code: string }> }) { const { invite_code } = await params; return <div>초대 코드: {invite_code} (TODO: Task 009/010 — 이벤트 미리보기, 로그인 유도, 자동 참여)</div> }. 비로그인 사용자도 접근 가능해야 하므로 내부에서 인증 체크나 redirect를 하지 않는다(그 책임은 proxy.ts의 allowlist에 있음).",
+      "verificationCriteria": "비로그인 상태에서 /join/abc123 접속 시 /auth/login으로 리다이렉트되지 않고 invite_code 값이 화면에 표시됨.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 1(\"애플리케이션 골격 구축\") 구현. Task 001(프로젝트 구조 및 라우팅 설정)과 Task 002(타입 정의)를 7개 서브태스크로 분할한다. 핵심 설계: (1) PRD 13페이지 중 기존 `/`, `/auth/login` 2개는 재사용하고 나머지 11개를 신규 생성. (2) 모바일 영역(이벤트 목록/생성/상세/수정, 프로필)은 `app/(app)/` 라우트 그룹으로 묶어 하단 탭바 레이아웃을 공유. (3) 관리자 영역(대시보드/이벤트/사용자/통계)은 `app/admin/(dashboard)/` 라우트 그룹으로 묶어 좌측 사이드바 레이아웃을 공유하고, `/admin/login`은 그 그룹 밖에 둬 사이드바 없이 노출. (4) `/join/[invite_code]`는 공개 라우트로 레이아웃 그룹 없이 루트 layout만 적용. (5) `lib/supabase/proxy.ts`의 인증 리다이렉트 allowlist에 `/join`, `/admin/login`을 추가하고 죽은 `/instruments` 예외를 제거, `/admin` role 체크는 Phase 3(Task 008) 자리로 TODO만 남김. (6) `lib/types/`에 Event/EventParticipant/UserProfile 등 임시 프론트엔드 타입을 신설하고 `lib/supabase/database.types.ts`(생성 파일, 실제 DB 타입)와 혼용되지 않도록 분리. 기존 `app/protected/*`, 인증 페이지/컴포넌트, `database.types.ts`는 전혀 수정하지 않는다. 모든 신규 page.tsx는 Phase 1 범위이므로 플레이스홀더 텍스트만 반환하는 서버 컴포넌트로 작성하고 실제 UI/비즈니스 로직은 Phase 2/3로 미룬다.",
+      "summary": "app/join/[invite_code]/page.tsx 생성, cacheComponents 대응을 위해 params 접근을 Suspense로 감싸는 동일 패턴 적용. 내부에서 인증 체크나 redirect를 하지 않음(allowlist가 proxy.ts에 있으므로). dev 서버에서 비로그인 상태로 /join/abc123에 curl 요청 시 200 OK로 응답하고 초대 코드 값이 렌더링됨을 확인 — /auth/login 리다이렉트 없음. npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-22T16:10:45.422Z"
+    },
+    {
+      "id": "b6bc7ca5-4e0e-4940-9067-df16616b17c4",
+      "name": "관리자 사이드바 레이아웃 골격 + /admin/login 페이지 생성",
+      "description": "관리자 대시보드 영역이 공유하는 좌측 사이드바 레이아웃 app/admin/(dashboard)/layout.tsx와 사이드바 컴포넌트 components/layout/admin-sidebar.tsx를 신설하고, 사이드바 그룹 밖에 위치하는 공개 라우트 app/admin/login/page.tsx를 생성한다.",
+      "notes": "라우트 그룹 폴더명 app/admin/(dashboard)/는 URL에 노출되지 않으므로 /admin/dashboard 등 경로는 그대로 유지된다. 기존 components/logout-button.tsx는 재사용하고 복제하지 않는다. 실제 role 체크/인가 로직은 Phase 3(Task 008) 범위이므로 여기서는 구현하지 않는다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "d5c83873-49e4-48d1-94f1-b8ef79ec1620"
+        }
+      ],
+      "createdAt": "2026-10-22T09:17:20.743Z",
+      "updatedAt": "2026-10-22T16:11:52.339Z",
+      "relatedFiles": [
+        {
+          "path": "components/layout/admin-sidebar.tsx",
+          "type": "CREATE",
+          "description": "관리자 사이드바 컴포넌트"
+        },
+        {
+          "path": "app/admin/(dashboard)/layout.tsx",
+          "type": "CREATE",
+          "description": "관리자 공통 레이아웃"
+        },
+        {
+          "path": "app/admin/login/page.tsx",
+          "type": "CREATE",
+          "description": "관리자 로그인 페이지 골격"
+        },
+        {
+          "path": "components/logout-button.tsx",
+          "type": "REFERENCE",
+          "description": "기존 로그아웃 버튼 재사용"
+        }
+      ],
+      "implementationGuide": "1) components/layout/admin-sidebar.tsx: 'use client' 컴포넌트. 메뉴 항목 [{href:'/admin/dashboard', label:'대시보드 메인'}, {href:'/admin/events', label:'이벤트 관리'}, {href:'/admin/users', label:'사용자 관리'}, {href:'/admin/analytics', label:'통계 분석'}] + 로그아웃 버튼(기존 components/logout-button.tsx 재사용). 너비 240px(w-60), bg-sidebar 등 시맨틱 토큰 사용, usePathname으로 활성 메뉴 강조.\n2) app/admin/(dashboard)/layout.tsx: flex 레이아웃으로 <AdminSidebar /> + 메인 콘텐츠 영역(children) 배치하는 서버 컴포넌트.\n3) app/admin/login/page.tsx: export default function AdminLoginPage() { return <div>관리자 로그인 (TODO: Task 008 — Google OAuth + role 체크)</div> } — 사이드바 그룹 밖이므로 사이드바가 렌더링되지 않음.",
+      "verificationCriteria": "/admin/login은 사이드바 없이 렌더링되고 비로그인 상태에서도 /auth/login으로 리다이렉트되지 않음. app/admin/(dashboard)/ 하위 임시 page.tsx가 사이드바와 함께 렌더링됨.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 1(\"애플리케이션 골격 구축\") 구현. Task 001(프로젝트 구조 및 라우팅 설정)과 Task 002(타입 정의)를 7개 서브태스크로 분할한다. 핵심 설계: (1) PRD 13페이지 중 기존 `/`, `/auth/login` 2개는 재사용하고 나머지 11개를 신규 생성. (2) 모바일 영역(이벤트 목록/생성/상세/수정, 프로필)은 `app/(app)/` 라우트 그룹으로 묶어 하단 탭바 레이아웃을 공유. (3) 관리자 영역(대시보드/이벤트/사용자/통계)은 `app/admin/(dashboard)/` 라우트 그룹으로 묶어 좌측 사이드바 레이아웃을 공유하고, `/admin/login`은 그 그룹 밖에 둬 사이드바 없이 노출. (4) `/join/[invite_code]`는 공개 라우트로 레이아웃 그룹 없이 루트 layout만 적용. (5) `lib/supabase/proxy.ts`의 인증 리다이렉트 allowlist에 `/join`, `/admin/login`을 추가하고 죽은 `/instruments` 예외를 제거, `/admin` role 체크는 Phase 3(Task 008) 자리로 TODO만 남김. (6) `lib/types/`에 Event/EventParticipant/UserProfile 등 임시 프론트엔드 타입을 신설하고 `lib/supabase/database.types.ts`(생성 파일, 실제 DB 타입)와 혼용되지 않도록 분리. 기존 `app/protected/*`, 인증 페이지/컴포넌트, `database.types.ts`는 전혀 수정하지 않는다. 모든 신규 page.tsx는 Phase 1 범위이므로 플레이스홀더 텍스트만 반환하는 서버 컴포넌트로 작성하고 실제 UI/비즈니스 로직은 Phase 2/3로 미룬다.",
+      "summary": "components/layout/admin-sidebar.tsx(240px 사이드바, 4개 메뉴 + 기존 LogoutButton 재사용), app/admin/(dashboard)/layout.tsx(사이드바+콘텐츠 영역), app/admin/login/page.tsx(사이드바 그룹 밖, TODO 플레이스홀더) 생성. globals.css에 sidebar 전용 토큰이 없어 기존 background/border/primary/accent 시맨틱 토큰으로 구성. npx tsc --noEmit, npm run lint, npm run build 모두 통과하고 /admin/login이 200으로 사이드바 없이 공개 접근됨을 curl로 확인.",
+      "completedAt": "2026-10-22T16:11:52.338Z"
+    },
+    {
+      "id": "8e893436-f9b5-48c0-9a93-bd6c67446698",
+      "name": "관리자 영역 4개 페이지 골격 생성 (/admin/dashboard, /admin/events, /admin/users, /admin/analytics)",
+      "description": "app/admin/(dashboard)/ 라우트 그룹 하위에 대시보드 메인, 이벤트 관리, 사용자 관리, 통계 분석 4개 페이지의 최소 골격을 생성한다.",
+      "notes": "URL은 라우트 그룹과 무관하게 /admin/dashboard, /admin/events, /admin/users, /admin/analytics 그대로 유지된다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "b6bc7ca5-4e0e-4940-9067-df16616b17c4"
+        },
+        {
+          "taskId": "3c096ecc-d2ed-4290-b43c-e375409f2228"
+        }
+      ],
+      "createdAt": "2026-10-22T09:17:20.743Z",
+      "updatedAt": "2026-10-22T16:12:45.757Z",
+      "relatedFiles": [
+        {
+          "path": "app/admin/(dashboard)/dashboard/page.tsx",
+          "type": "CREATE",
+          "description": "관리자 대시보드 골격"
+        },
+        {
+          "path": "app/admin/(dashboard)/events/page.tsx",
+          "type": "CREATE",
+          "description": "관리자 이벤트 관리 골격"
+        },
+        {
+          "path": "app/admin/(dashboard)/users/page.tsx",
+          "type": "CREATE",
+          "description": "관리자 사용자 관리 골격"
+        },
+        {
+          "path": "app/admin/(dashboard)/analytics/page.tsx",
+          "type": "CREATE",
+          "description": "관리자 통계 분석 골격"
+        }
+      ],
+      "implementationGuide": "각 page.tsx는 플레이스홀더 텍스트만 반환하는 서버 컴포넌트:\n- app/admin/(dashboard)/dashboard/page.tsx → AdminDashboardPage, '관리자 대시보드 (TODO: Task 011 — F012 지표 카드)'\n- app/admin/(dashboard)/events/page.tsx → AdminEventsPage, '이벤트 관리 (TODO: Task 011 — F013 테이블/검색/필터)'\n- app/admin/(dashboard)/users/page.tsx → AdminUsersPage, '사용자 관리 (TODO: Task 011 — F014 테이블/검색/필터)'\n- app/admin/(dashboard)/analytics/page.tsx → AdminAnalyticsPage, '통계 분석 (TODO: Task 006/011 — F015 Recharts)'\n모두 export default function 명명 컨벤션 준수.",
+      "verificationCriteria": "npm run dev 실행 후 /admin/dashboard, /admin/events, /admin/users, /admin/analytics 4개 경로 모두 200 응답과 사이드바가 포함된 화면을 반환. npm run lint, npx tsc --noEmit 모두 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 1(\"애플리케이션 골격 구축\") 구현. Task 001(프로젝트 구조 및 라우팅 설정)과 Task 002(타입 정의)를 7개 서브태스크로 분할한다. 핵심 설계: (1) PRD 13페이지 중 기존 `/`, `/auth/login` 2개는 재사용하고 나머지 11개를 신규 생성. (2) 모바일 영역(이벤트 목록/생성/상세/수정, 프로필)은 `app/(app)/` 라우트 그룹으로 묶어 하단 탭바 레이아웃을 공유. (3) 관리자 영역(대시보드/이벤트/사용자/통계)은 `app/admin/(dashboard)/` 라우트 그룹으로 묶어 좌측 사이드바 레이아웃을 공유하고, `/admin/login`은 그 그룹 밖에 둬 사이드바 없이 노출. (4) `/join/[invite_code]`는 공개 라우트로 레이아웃 그룹 없이 루트 layout만 적용. (5) `lib/supabase/proxy.ts`의 인증 리다이렉트 allowlist에 `/join`, `/admin/login`을 추가하고 죽은 `/instruments` 예외를 제거, `/admin` role 체크는 Phase 3(Task 008) 자리로 TODO만 남김. (6) `lib/types/`에 Event/EventParticipant/UserProfile 등 임시 프론트엔드 타입을 신설하고 `lib/supabase/database.types.ts`(생성 파일, 실제 DB 타입)와 혼용되지 않도록 분리. 기존 `app/protected/*`, 인증 페이지/컴포넌트, `database.types.ts`는 전혀 수정하지 않는다. 모든 신규 page.tsx는 Phase 1 범위이므로 플레이스홀더 텍스트만 반환하는 서버 컴포넌트로 작성하고 실제 UI/비즈니스 로직은 Phase 2/3로 미룬다.",
+      "summary": "app/admin/(dashboard)/{dashboard,events,users,analytics}/page.tsx 4개 골격 페이지 생성, 모두 동적 params 없는 단순 서버 컴포넌트. npx tsc --noEmit, npm run lint, npm run build 모두 통과하고 최종 라우트 테이블에 PRD 13개 페이지가 전부 나타남을 확인. 비로그인 상태에서 4개 경로 모두 307로 /auth/login 리다이렉트되는 것을 확인 — admin 영역은 아직 role 체크 전이라 일반 보호 라우트와 동일하게 로그인만 요구하는 것이 Phase1 설계 의도와 일치.",
+      "completedAt": "2026-10-22T16:12:45.756Z"
+    }
+  ]
+}

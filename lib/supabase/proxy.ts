@@ -52,14 +52,16 @@ export async function updateSession(request: NextRequest) {
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
     !request.nextUrl.pathname.startsWith("/auth") &&
-    request.nextUrl.pathname !== "/instruments" &&
-    !request.nextUrl.pathname.startsWith("/instruments/")
+    !request.nextUrl.pathname.startsWith("/join") &&
+    !request.nextUrl.pathname.startsWith("/admin/login")
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
   }
+
+  // TODO(Task 008): /admin/* 경로는 로그인 후 claims의 role === 'admin' 여부를 추가로 체크해야 함
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
