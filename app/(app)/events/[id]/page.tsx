@@ -1,18 +1,19 @@
 import { CalendarIcon, MapPinIcon } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { ParticipantCard } from "@/components/common/participant-card";
 import { EventStatusBadge } from "@/components/common/event-status-badge";
 import { CopyInviteLinkButton } from "@/components/events/copy-invite-link-button";
 import { DeleteEventDialog } from "@/components/events/delete-event-dialog";
+import { LiveParticipantList } from "@/components/events/live-participant-list";
 import { Button } from "@/components/ui/button";
-import { getDemoViewerRole } from "@/lib/demo-role";
 import {
-  getDummyEventById,
-  getDummyParticipantsWithProfiles,
-} from "@/lib/dummy-data";
+  getEventById,
+  getEventParticipantsWithProfiles,
+} from "@/lib/events-queries";
+import { createClient } from "@/lib/supabase/server";
 
 async function EventDetailContent({
   params,
@@ -20,30 +21,43 @@ async function EventDetailContent({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const event = getDummyEventById(id);
+  const event = await getEventById(id);
 
   if (!event) {
     notFound();
   }
 
-  const role = await getDemoViewerRole();
-  const isHost = role === "host";
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const isHost = data?.claims?.sub === event.createdBy;
 
   const eventDate = new Date(event.eventDate).toLocaleDateString("ko-KR", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  const participants = getDummyParticipantsWithProfiles(event.id);
+  const participants = await getEventParticipantsWithProfiles(event.id);
 
   return (
     <div className="flex flex-col gap-6 p-4">
+      {event.coverImageUrl && (
+        <div className="relative aspect-video w-full overflow-hidden rounded-md">
+          <Image
+            src={event.coverImageUrl}
+            alt={event.title}
+            fill
+            sizes="100vw"
+            className="object-cover"
+          />
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-2">
         <h1 className="text-xl font-semibold">{event.title}</h1>
         <EventStatusBadge status={event.status} />
       </div>
 
-      <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex flex-col gap-2 text-sm">
         <div className="flex items-center gap-2">
           <CalendarIcon className="size-4 shrink-0" />
           <span>{eventDate}</span>
@@ -55,7 +69,7 @@ async function EventDetailContent({
       </div>
 
       {event.description && (
-        <p className="text-sm text-foreground">{event.description}</p>
+        <p className="text-foreground text-sm">{event.description}</p>
       )}
 
       {isHost && (
@@ -65,34 +79,24 @@ async function EventDetailContent({
             type="button"
             variant="outline"
             disabled
-            title="카카오톡 공유는 Task 009에서 지원 예정입니다"
+            title="카카오톡 공유는 추후 지원됩니다"
           >
             카카오톡 공유
           </Button>
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          참여자 {participants.length}명
-        </h2>
-        <div className="flex flex-col divide-y">
-          {participants.map(({ participant, profile }) => (
-            <ParticipantCard
-              key={participant.id}
-              participant={participant}
-              profile={profile}
-            />
-          ))}
-        </div>
-      </div>
+      <LiveParticipantList
+        eventId={event.id}
+        initialParticipants={participants}
+      />
 
       {isHost && (
         <div className="flex gap-2">
           <Button asChild variant="outline" className="flex-1">
             <Link href={`/events/${event.id}/edit`}>이벤트 수정</Link>
           </Button>
-          <DeleteEventDialog />
+          <DeleteEventDialog eventId={event.id} />
         </div>
       )}
     </div>

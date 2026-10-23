@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { EventEditForm } from "@/components/events/event-edit-form";
-import { getDummyEventById } from "@/lib/dummy-data";
+import { getEventById } from "@/lib/events-queries";
+import { createClient } from "@/lib/supabase/server";
 
 async function EventEditContent({
   params,
@@ -10,9 +11,17 @@ async function EventEditContent({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const event = getDummyEventById(id);
+  const event = await getEventById(id);
 
   if (!event) {
+    notFound();
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const isHost = data?.claims?.sub === event.createdBy;
+
+  if (!isHost) {
     notFound();
   }
 
@@ -27,6 +36,7 @@ async function EventEditContent({
           location: event.location,
           eventDate: event.eventDate,
         }}
+        defaultCoverImageUrl={event.coverImageUrl}
       />
     </div>
   );

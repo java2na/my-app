@@ -14,12 +14,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { createClient } from "@/lib/supabase/client";
 
-export function DeleteEventDialog() {
+export function DeleteEventDialog({ eventId }: { eventId: string }) {
   const router = useRouter();
+  const supabase = createClient();
 
-  function handleConfirm() {
-    // TODO(Task 009): 실제 Supabase 삭제 API 연동
+  async function handleConfirm() {
+    const { error } = await supabase.from("events").delete().eq("id", eventId);
+
+    if (error) {
+      toast.error("삭제에 실패했습니다");
+      return;
+    }
+
     toast.success("이벤트가 삭제되었습니다");
     router.push("/events");
   }
