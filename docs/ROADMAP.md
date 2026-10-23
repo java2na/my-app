@@ -2,8 +2,8 @@
 
 일회성 이벤트를 간편하게 관리하는 올인원 플랫폼 - 초대 링크 하나로 모든 것을 해결
 
-**📅 최종 업데이트**: 2026-10-23
-**📊 진행 상황**: Phase 2 완료, Phase 3 진행 중 (11/15 Tasks 완료)
+**📅 최종 업데이트**: 2026-10-24
+**📊 진행 상황**: Phase 2 완료, Phase 3 진행 중 (12/15 Tasks 완료)
 
 ## 개요
 
@@ -175,13 +175,21 @@ Gather는 5-30명 규모의 소규모 이벤트 주최자와 참여자를 위한
   - robots.txt 및 sitemap.xml 생성
   - Lighthouse 점수 90+ 달성
 
-- **Task 015: 배포 및 모니터링**
-  - Vercel 프로젝트 설정 및 환경 변수 구성
-  - CI/CD 파이프라인 구축
-  - 에러 모니터링 시스템 설정 (Sentry)
-  - 분석 도구 설정 (Google Analytics)
-  - 프로덕션 배포 및 도메인 연결
-  - 배포 후 통합 테스트 수행
+- **Task 015: 배포 및 모니터링** ✅ - 완료
+  - ✅ Vercel 프로젝트 설정 및 환경 변수 구성 — GitHub 연동 및 3개 환경변수(Supabase URL/키/서비스롤)를 Production/Preview/Development 전체에 등록, GitHub Actions Secrets에도 동일 등록
+  - ✅ CI/CD 파이프라인 구축 — `.github/workflows/ci.yml`(lint→type-check→build), master push 시 Vercel 자동 배포 연동 확인
+  - ✅ 에러 모니터링 시스템 설정 (Sentry) — `@sentry/nextjs` 연동(client/server/edge), DSN은 환경변수로 분리. 테스트 중 Sentry의 tunnelRoute(`/monitoring`)가 proxy.ts 인증 리다이렉트에 막혀 에러가 전달되지 않던 버그를 발견해 allowlist에 추가
+  - ✅ 분석 도구 설정 (Google Analytics) — `@next/third-parties`의 GoogleAnalytics 컴포넌트로 GA4 연동, 실제 page_view 이벤트 전송(204) 확인
+  - ✅ 프로덕션 배포 및 도메인 연결 — Vercel 프로덕션 배포 성공(cacheComponents 정상 동작), 커스텀 도메인 없이 기본 `*.vercel.app` 사용. 배포 직후 Vercel Deployment Protection이 production까지 막고 있던 것을 발견해 production만 공개로 전환
+  - ✅ 배포 후 통합 테스트 수행 — Playwright MCP로 프로덕션에서 로그인/이벤트 생성/초대 참여/Realtime 참여자 갱신/관리자 권한 격리까지 전부 재검증, 테스트 데이터 정리 완료
+
+- **Task 016: 이벤트 날짜/시간 타임존 표시 버그 수정**
+  - **배경**: Task 015 프로덕션 통합 테스트 중 발견. 이벤트 생성 시 18시로 선택했는데 상세/참여 페이지에 "오전 09:00"으로 표시됨(9시간 차이, KST-UTC 오프셋과 정확히 일치).
+  - **원인(추정)**: `new Date(...).toLocaleString("ko-KR", {...})` 호출에 `timeZone: "Asia/Seoul"`을 지정하지 않아, 서버(Vercel, 기본 UTC)의 로컬 타임존 기준으로 포맷됨. DB에 저장된 값 자체는 정확한 UTC로 추정되며 표시 로직만 문제일 가능성이 높음(구현 시 재검증 필요).
+  - **영향 범위**: `app/(app)/events/[id]/page.tsx`, `app/join/[invite_code]/page.tsx`, `components/common/event-card.tsx`, `app/(app)/profile/page.tsx`, `components/admin/event-table.tsx`, `components/admin/user-table.tsx` (날짜만 표시하는 두 곳은 자정 근처 경계에서만 영향)
+  - [ ] 각 표시 지점에 `timeZone: "Asia/Seoul"` 명시 (또는 공용 포맷 유틸 함수로 통합)
+  - [ ] 이벤트 생성/수정 폼(`components/events/event-form.tsx`)의 로컬 시간 → UTC 변환 로직도 함께 점검
+  - [ ] Playwright MCP로 특정 시각 선택 → 저장 → 표시까지 왕복 검증
 
 ## 작업별 세부 사항
 
@@ -273,8 +281,8 @@ Gather는 5-30명 규모의 소규모 이벤트 주최자와 참여자를 위한
 
 - [ ] Lighthouse 점수 90+ 달성
 - [ ] 모든 이미지 최적화 완료
-- [ ] 프로덕션 배포 성공
-- [ ] 에러 모니터링 설정 완료
+- [x] 프로덕션 배포 성공
+- [x] 에러 모니터링 설정 완료
 
 ## 주의사항
 
