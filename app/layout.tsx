@@ -3,14 +3,17 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
+import { Toaster } from "@/components/ui/sonner";
+
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: "Gather",
+  description:
+    "일회성 이벤트를 간편하게 관리하는 올인원 플랫폼 — 초대 링크 하나로 모든 것을 해결",
 };
 
 const geistSans = Geist({
@@ -34,6 +37,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
