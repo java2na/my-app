@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2Icon, UsersIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  Trash2Icon,
+  UsersIcon,
+} from "lucide-react";
 
+import { adminDeleteUser } from "@/app/admin/(dashboard)/users/actions";
 import { AdminDeleteDialog } from "@/components/admin/admin-delete-dialog";
 import { AdminTableToolbar } from "@/components/admin/admin-table-toolbar";
 import { EmptyState } from "@/components/common/empty-state";
@@ -27,6 +33,8 @@ const ROLE_FILTER_OPTIONS = [
   { value: "admin", label: "관리자" },
 ] as const;
 
+type SortKey = "createdAt" | "createdEventCount" | "joinedEventCount";
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR");
 }
@@ -35,11 +43,45 @@ function getInitial(name: string | null) {
   return name ? name.trim().charAt(0).toUpperCase() : "?";
 }
 
+function getSortValue(row: AdminUserRow, key: SortKey): number {
+  switch (key) {
+    case "createdAt":
+      return new Date(row.user.createdAt).getTime();
+    case "createdEventCount":
+      return row.createdEventCount;
+    case "joinedEventCount":
+      return row.joinedEventCount;
+  }
+}
+
+function SortIndicator({
+  active,
+  dir,
+}: {
+  active: boolean;
+  dir: "asc" | "desc";
+}) {
+  if (!active) return null;
+  const Icon = dir === "asc" ? ChevronUpIcon : ChevronDownIcon;
+  return <Icon className="size-3" />;
+}
+
 export function UserTable({ rows: initialRows }: { rows: AdminUserRow[] }) {
   const [rows, setRows] = useState(initialRows);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   const filtered = rows.filter(({ user }) => {
     const keyword = search.trim().toLowerCase();
@@ -51,14 +93,25 @@ export function UserTable({ rows: initialRows }: { rows: AdminUserRow[] }) {
     return matchesSearch && matchesRole;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const sorted = sortKey
+    ? [...filtered].sort((a, b) => {
+        const diff = getSortValue(a, sortKey) - getSortValue(b, sortKey);
+        return sortDir === "asc" ? diff : -diff;
+      })
+    : filtered;
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const paged = filtered.slice(
+  const paged = sorted.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
 
-  function handleDelete(userId: string) {
+  async function handleDelete(userId: string) {
+    const result = await adminDeleteUser(userId);
+    if (result.error) {
+      throw new Error(result.error);
+    }
     setRows((prev) => prev.filter((row) => row.user.id !== userId));
   }
 
@@ -93,9 +146,45 @@ export function UserTable({ rows: initialRows }: { rows: AdminUserRow[] }) {
               <TableHead>이름</TableHead>
               <TableHead>이메일</TableHead>
               <TableHead>역할</TableHead>
-              <TableHead>가입일</TableHead>
-              <TableHead>생성한 이벤트</TableHead>
-              <TableHead>참여한 이벤트</TableHead>
+              <TableHead>
+                <button
+                  type="button"
+                  className="flex items-center gap-1"
+                  onClick={() => toggleSort("createdAt")}
+                >
+                  가입일
+                  <SortIndicator
+                    active={sortKey === "createdAt"}
+                    dir={sortDir}
+                  />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button
+                  type="button"
+                  className="flex items-center gap-1"
+                  onClick={() => toggleSort("createdEventCount")}
+                >
+                  생성한 이벤트
+                  <SortIndicator
+                    active={sortKey === "createdEventCount"}
+                    dir={sortDir}
+                  />
+                </button>
+              </TableHead>
+              <TableHead>
+                <button
+                  type="button"
+                  className="flex items-center gap-1"
+                  onClick={() => toggleSort("joinedEventCount")}
+                >
+                  참여한 이벤트
+                  <SortIndicator
+                    active={sortKey === "joinedEventCount"}
+                    dir={sortDir}
+                  />
+                </button>
+              </TableHead>
               <TableHead className="text-right">관리</TableHead>
             </TableRow>
           </TableHeader>

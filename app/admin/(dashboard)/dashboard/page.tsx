@@ -14,7 +14,8 @@ import { Suspense } from "react";
 import { MetricCard } from "@/components/admin/metric-card";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getAdminDashboardMetrics } from "@/lib/dummy-data";
+import { getAdminDashboardMetrics } from "@/lib/admin-queries";
+import { requireAdmin } from "@/lib/supabase/require-admin";
 
 const QUICK_LINKS = [
   { href: "/admin/events", label: "이벤트 관리" },
@@ -25,7 +26,8 @@ const QUICK_LINKS = [
 async function DashboardMetrics() {
   // "오늘" 기준 집계는 요청 시점의 현재 시각에 의존하므로 프리렌더링 대상에서 제외한다.
   await connection();
-  const metrics = getAdminDashboardMetrics();
+  await requireAdmin();
+  const metrics = await getAdminDashboardMetrics();
 
   const metricCards = [
     {

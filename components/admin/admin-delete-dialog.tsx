@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import {
@@ -19,7 +19,7 @@ interface AdminDeleteDialogProps {
   trigger: ReactNode;
   title: string;
   description: string;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void> | void;
 }
 
 export function AdminDeleteDialog({
@@ -28,14 +28,26 @@ export function AdminDeleteDialog({
   description,
   onConfirm,
 }: AdminDeleteDialogProps) {
-  function handleConfirm() {
-    // TODO(Task 011): 실제 Supabase 삭제 API 연동
-    onConfirm();
-    toast.success("삭제되었습니다");
+  const [open, setOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+
+  async function handleConfirm() {
+    setIsPending(true);
+    try {
+      await onConfirm();
+      toast.success("삭제되었습니다");
+      setOpen(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "삭제에 실패했습니다",
+      );
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -44,15 +56,18 @@ export function AdminDeleteDialog({
         </DialogHeader>
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" disabled={isPending}>
               취소
             </Button>
           </DialogClose>
-          <DialogClose asChild>
-            <Button type="button" variant="destructive" onClick={handleConfirm}>
-              삭제
-            </Button>
-          </DialogClose>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={isPending}
+          >
+            {isPending ? "삭제 중..." : "삭제"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

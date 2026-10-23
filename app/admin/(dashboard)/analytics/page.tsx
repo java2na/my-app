@@ -8,7 +8,8 @@ import {
   getAdminUserRows,
   getEventTrend,
   getUserTrend,
-} from "@/lib/dummy-data";
+} from "@/lib/admin-queries";
+import { requireAdmin } from "@/lib/supabase/require-admin";
 import type { ChartPoint } from "@/lib/types/components";
 
 type Period = "7" | "30" | "90";
@@ -18,16 +19,27 @@ const PERIODS = [7, 30, 90] as const;
 async function AnalyticsData() {
   // 추이 집계는 요청 시점의 현재 날짜에 의존하므로 프리렌더링 대상에서 제외한다.
   await connection();
+  await requireAdmin();
 
-  const trendsByPeriod = Object.fromEntries(
-    PERIODS.map((days) => [
-      String(days),
-      { events: getEventTrend(days), users: getUserTrend(days) },
-    ]),
-  ) as Record<Period, { events: ChartPoint[]; users: ChartPoint[] }>;
+  const trendsByPeriodEntries = await Promise.all(
+    PERIODS.map(
+      async (days) =>
+        [
+          String(days),
+          {
+            events: await getEventTrend(days),
+            users: await getUserTrend(days),
+          },
+        ] as const,
+    ),
+  );
+  const trendsByPeriod = Object.fromEntries(trendsByPeriodEntries) as Record<
+    Period,
+    { events: ChartPoint[]; users: ChartPoint[] }
+  >;
 
-  const eventRows = getAdminEventRows();
-  const userRows = getAdminUserRows();
+  const eventRows = await getAdminEventRows();
+  const userRows = await getAdminUserRows();
   const avgParticipants =
     eventRows.length === 0
       ? 0

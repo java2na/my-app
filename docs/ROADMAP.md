@@ -3,7 +3,7 @@
 일회성 이벤트를 간편하게 관리하는 올인원 플랫폼 - 초대 링크 하나로 모든 것을 해결
 
 **📅 최종 업데이트**: 2026-10-23
-**📊 진행 상황**: Phase 2 완료, Phase 3 진행 중 (10/15 Tasks 완료)
+**📊 진행 상황**: Phase 2 완료, Phase 3 진행 중 (11/15 Tasks 완료)
 
 ## 개요
 
@@ -141,13 +141,14 @@ Gather는 5-30명 규모의 소규모 이벤트 주최자와 참여자를 위한
   - ✅ 내가 참여한/만든 이벤트 목록 조회 구현 (F007) — getMyEvents로 event_participants 기준 실제 데이터 조회, /events 페이지를 "내가 만든 이벤트"/"참여한 이벤트" 2개 섹션으로 재구성. 기존 Phase 2 데모 역할 토글(lib/demo-role.ts 등)은 실제 데이터로 대체되어 제거
   - ✅ Playwright MCP를 활용한 실시간 참여자 업데이트 테스트 — 실제 Supabase 프로젝트에 대해 신규 참여/중복 참여 차단(호스트 자기 자신 포함)/실시간 INSERT·DELETE 반영/만든·참여한 목록 분리/상태 필터/초대 코드 404/미로그인 접근까지 검증
 
-- **Task 011: 관리자 대시보드 백엔드 구현**
-  - 대시보드 지표 집계 쿼리 구현 (F012)
-  - 이벤트 관리 테이블 검색/필터/삭제 API 구현 (F013)
-  - 사용자 관리 테이블 검색/필터/삭제 API 구현 (F014)
-  - 통계 데이터 집계 및 그래프 데이터 API 구현 (F015)
-  - 페이지네이션 및 정렬 로직 구현
-  - Playwright MCP를 활용한 관리자 기능 통합 테스트
+- **Task 011: 관리자 대시보드 백엔드 구현** ✅ - 완료
+  - ✅ 대시보드 지표 집계 쿼리 구현 (F012) — lib/admin-queries.ts의 getAdminDashboardMetrics, UTC 기준 오늘/이번 주/이번 달/전체 집계
+  - ✅ 이벤트 관리 테이블 검색/필터/삭제 API 구현 (F013) — getAdminEventRows + app/admin/(dashboard)/events/actions.ts의 adminDeleteEvent(service_role로 소유자 제한 RLS 우회, 타인 이벤트 삭제 검증 완료)
+  - ✅ 사용자 관리 테이블 검색/필터/삭제 API 구현 (F014) — getAdminUserRows + app/admin/(dashboard)/users/actions.ts의 adminDeleteUser(supabase.auth.admin.deleteUser로 auth.users/profiles/연관 이벤트까지 cascade 삭제 검증 완료, 자기 계정 삭제는 코드 레벨에서 차단)
+  - ✅ 통계 데이터 집계 및 그래프 데이터 API 구현 (F015) — getEventTrend/getUserTrend, 7/30/90일 기간 전환 확인
+  - ✅ 페이지네이션 및 정렬 로직 구현 — 기존 클라이언트 사이드 검색/필터/페이지네이션 유지(소규모 플랫폼 특성상 전체 조회 후 클라이언트 처리로 충분), event-table.tsx/user-table.tsx에 컬럼 정렬(날짜·참여자 수·생성일 / 가입일·생성한 이벤트·참여한 이벤트) 신규 추가
+  - ✅ Playwright MCP를 활용한 관리자 기능 통합 테스트 — 대시보드 지표·목록·분석 페이지 실데이터 대 SQL 대사 검증, 검색/필터/정렬 동작 확인, 타인이 만든 이벤트 삭제(참여자 cascade 포함), 테스트용 사용자 삭제(auth.users/profiles/이벤트 cascade 포함), 비인증 상태에서 Server Action 직접 호출 차단(307 리다이렉트) 검증. 테스트 중 event_participants RLS(is_event_member)로 인해 관리자가 비멤버 이벤트의 참여자 수를 과소 집계하는 버그를 발견해 lib/admin-queries.ts를 service_role 클라이언트 기반으로 전환해 수정
+  - 신규 인프라: lib/supabase/admin.ts(service_role 클라이언트), lib/supabase/require-admin.ts(requireAdmin 가드, Server Component/Action 양쪽에서 재검증). lib/dummy-data.ts는 더 이상 쓰이지 않아 삭제
 
 - **Task 012: 핵심 기능 통합 테스트**
   - Playwright MCP를 사용한 전체 사용자 플로우 테스트
