@@ -1003,6 +1003,675 @@
       "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 005(참여자 모바일 UI/UX 완성)의 최종 목표: Task 004가 \"항상 호스트\"로 완성한 /events, /events/[id], 하단 내비게이션에 참여자 뷰 분기를 추가하고 초대 링크 참여 페이지(/join/[invite_code])를 완성한다. 핵심 설계 결정: (1) 호스트/참여자는 PRD 설계상 동일 라우트를 공유하며 역할에 따라 조건부 렌더링되는데, 실제 인증/권한 시스템은 Phase 3(Task 008/010)에서 완성되므로 사용자와 합의한 대로 쿠키 기반 데모 역할 토글(gather-demo-role: host|participant, 기본값 host로 Task004 기존 동작과 100% 호환)을 쓴다. (2) 역할을 \"읽는\" lib/demo-role.ts(getDemoViewerRole, 순수 조회)와 \"쓰는\" lib/demo-role-actions.ts(\"use server\" Server Action, 쿠키 설정+리다이렉트)를 분리해, 역할을 소비하는 서버 컴포넌트(app/(app)/layout.tsx, events/page.tsx, events/[id]/page.tsx)가 쓰기 로직을 신경 쓰지 않게 한다. 토글 UI는 profile 페이지에 둔다. (3) components/layout/mobile-bottom-nav.tsx는 'use client'라 쿠키를 직접 읽지 않고 app/(app)/layout.tsx(서버)가 role을 prop으로 내려준다. (4) events/[id]/page.tsx의 `const isHost = true; // TODO(Task 005)`를 `const role = await getDemoViewerRole(); const isHost = role === 'host';`로 교체하고, 기존에 isHost 블록 밖에 있던 CopyInviteLinkButton/카카오 버튼(초대 공유)을 isHost 블록 안으로 옮겨 PRD의 \"참여자는 공유 기능 제한\"을 만족시킨다 — 참여자 목록(ParticipantCard)은 원래부터 읽기 전용이라 그대로 둔다. (5) events/page.tsx는 role==='participant'면 제목을 \"참여 중인 이벤트\"로 바꾸고 FAB를 숨긴다(더미 데이터 한계상 이벤트 목록 자체는 호스트/참여자 공통으로 DUMMY_EVENTS 전체를 보여줌 — 주석으로 명시). (6) /join/[invite_code]는 역할 토글과 무관한 완전히 별도의 공개 플로우로, lib/dummy-data.ts에 getDummyEventByInviteCode(code) 헬퍼를 추가해 이벤트를 조회하고(없으면 notFound()), 주최자 정보는 getDummyParticipantsWithProfiles(event.id)에서 role==='host'인 항목으로 표시하며, 실제 supabase.auth.getClaims()로 로그인 여부를 확인해 비로그인이면 GoogleLoginButton(신규 선택적 next prop으로 로그인 후 같은 join 페이지로 복귀), 로그인 상태면 '참여 확인' 버튼(클릭 시 toast+router.push로 이벤트 상세 이동, 실제 참여 처리는 TODO(Task 010))을 보여준다. GoogleLoginButton의 next prop은 옵셔널이라 기존 login-form.tsx/sign-up-form.tsx 호출부(prop 없이 사용 중, grep으로 확인됨)는 수정하지 않는다. (7) 새 shadcn 컴포넌트는 설치하지 않는다(기존 13개로 충분). 검증은 npx tsc --noEmit / npm run lint / npm run build 3종 + Playwright로 쿠키 전환 전후 실제 UI 차이와 join 페이지 더미 조회를 확인한다.",
       "summary": "lib/dummy-data.ts에 getDummyEventByInviteCode(code) 추가(기존 함수 변경 없음). components/google-login-button.tsx에 선택적 next prop 추가(미지정 시 기존 동작과 100% 동일 — login-form.tsx/sign-up-form.tsx는 prop 없이 호출 중임을 grep으로 재확인해 수정하지 않음). components/events/join-confirm-button.tsx('use client', toast+router.push, TODO(Task 010))를 신설. app/join/[invite_code]/page.tsx를 완성: getDummyEventByInviteCode로 조회(없으면 notFound()), getDummyParticipantsWithProfiles에서 role==='host'인 항목으로 주최자 이름 표시, 실제 supabase.auth.getClaims()로 로그인 여부 분기. Playwright로 실제 확인: 호스트 뷰에서 '초대 링크 복사' 클릭 시 실제로 `/join/{inviteCode}` 형태 URL이 복사됨(navigator.clipboard 패치로 캡처), 그 코드로 /join 접속 시 이벤트 미리보기+주최자 이름(박도윤)이 표시되고 로그인 상태라 '참여 확인' 버튼이 보임, 클릭 시 해당 이벤트 상세로 정상 이동. 존재하지 않는 코드는 실제 404. 로그아웃 분기(GoogleLoginButton)는 실제 세션을 끊지 않기 위해 코드 리뷰로만 확인(단순 삼항 분기, GoogleLoginButton 자체는 기존에 실동작 검증됨). npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
       "completedAt": "2026-10-23T05:43:38.609Z"
+    },
+    {
+      "id": "a0e2d6d5-d8bc-4bc0-aa44-4894b804e5b8",
+      "name": "Recharts/shadcn table 설치 및 관리자용 더미 데이터·집계 헬퍼 구축",
+      "description": "Recharts 2.x와 shadcn table 컴포넌트를 설치하고, lib/dummy-data.ts에 다중 사용자 더미 데이터셋(DUMMY_USERS)과 관리자 페이지용 집계 헬퍼(getAdminEventRows, getAdminUserRows, getAdminDashboardMetrics, getEventTrend, getUserTrend)를 추가한다. 기존 DUMMY_EVENTS.createdBy가 매번 무관한 랜덤 UUID라 어떤 사용자와도 매칭되지 않는 문제를 해결하기 위해, DUMMY_USERS를 먼저 생성하고 DUMMY_EVENTS 생성 시 createdBy를 DUMMY_USERS에서 pickRandom하도록 순서를 바꾼다. lib/types/components.ts에 AdminMetricCardProps, AdminEventRow, AdminUserRow, ChartPoint 타입을 추가한다.",
+      "notes": "Supabase 호출 없는 순수 함수만 추가(shrimp-rules.md 더미데이터 규칙). DUMMY_EVENTS는 모듈 스코프에서 1회만 생성되므로 선언 순서 변경 시 참조 오류(ReferenceError: Cannot access before initialization) 없도록 DUMMY_USERS를 파일 상단으로 이동.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T05:55:45.934Z",
+      "updatedAt": "2026-10-23T05:59:05.231Z",
+      "relatedFiles": [
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "TO_MODIFY",
+          "description": "DUMMY_USERS 및 관리자 집계 헬퍼 추가, DUMMY_EVENTS.createdBy 연결"
+        },
+        {
+          "path": "lib/types/components.ts",
+          "type": "TO_MODIFY",
+          "description": "Admin*Props, ChartPoint 타입 추가"
+        },
+        {
+          "path": "lib/types/user.ts",
+          "type": "REFERENCE",
+          "description": "UserProfile/UserRole 타입 참고"
+        },
+        {
+          "path": "package.json",
+          "type": "TO_MODIFY",
+          "description": "recharts 의존성 추가"
+        }
+      ],
+      "implementationGuide": "pseudocode:\n1. `npx shadcn@latest add table` 실행 → components/ui/table.tsx 생성 확인\n2. `npm install recharts` 실행 → package.json dependencies 반영 확인\n3. lib/dummy-data.ts 수정:\n   - createDummyUser(overrides?): UserProfile — createDummyProfile과 동일하되 role 90%는 'user', 10%는 'admin'으로 분기, createdAt을 과거 0~90일 랜덤 분산\n   - export const DUMMY_USERS: UserProfile[] = Array.from({length:12}, createDummyUser) (최소 1명은 role:'admin' 보장)\n   - createDummyEvent의 createdBy 기본값을 `pickRandom(DUMMY_USERS).id`로 변경 (DUMMY_USERS가 createDummyEvent보다 먼저 선언되어야 함 — 파일 내 선언 순서 재배치)\n   - getAdminEventRows(): { event: Event; hostName: string; participantCount: number }[] — DUMMY_EVENTS.map, hostName은 DUMMY_USERS.find(u=>u.id===event.createdBy)?.name ?? '알수없음', participantCount은 getDummyParticipantsWithProfiles(event.id).length\n   - getAdminUserRows(): { user: UserProfile; createdEventCount: number; joinedEventCount: number }[] — DUMMY_USERS.map, createdEventCount은 DUMMY_EVENTS.filter(e=>e.createdBy===user.id).length, joinedEventCount은 모든 이벤트의 참여자맵을 순회해 participant.userId===user.id 카운트\n   - getAdminDashboardMetrics(): 오늘/이번주/이번달/전체 이벤트수(DUMMY_EVENTS의 createdAt 기준), 오늘/이번주/전체 가입자수(DUMMY_USERS의 createdAt 기준) 반환 객체\n   - getEventTrend(days: number): {date:string,count:number}[] / getUserTrend(days:number): 동일 형태 — 최근 N일 각 날짜별 createdAt이 해당 날짜인 개수 집계(없으면 0)\n4. lib/types/components.ts에 인터페이스 추가:\n   - AdminMetricCardProps { label: string; value: number; icon?: LucideIcon }\n   - AdminEventRow / AdminUserRow (위 함수 반환 요소 타입과 일치, Pick 패턴 유지)\n   - ChartPoint { date: string; count: number }",
+      "verificationCriteria": "npx tsc --noEmit 통과, DUMMY_USERS.length>=12이고 role:'admin' 1명 이상 존재, getAdminEventRows()/getAdminUserRows()의 모든 행이 유효한 hostName/participantCount/createdEventCount/joinedEventCount를 가짐, getEventTrend(7)/getUserTrend(7)이 길이 7 배열 반환",
+      "analysisResult": "Task 006: 관리자 데스크톱 페이지 UI 완성. ROADMAP.md Phase 2의 마지막 Task로, Task 001에서 만든 관리자 영역 빈 껍데기(/admin/login, /admin/(dashboard)/{dashboard,events,users,analytics}, components/layout/admin-sidebar.tsx)를 더미 데이터 기반 실제 UI로 채운다. F012(지표 카드)/F013(이벤트 테이블)/F014(사용자 테이블)/F015(Recharts 통계)를 구현하며, 관리자 로그인은 UI 셸만(실제 OAuth+role 체크는 Task 008). Recharts·shadcn table 신규 설치, lib/dummy-data.ts에 다중 사용자 더미 데이터와 관리자 집계 헬퍼 함수 추가가 선행 과제이며, 기존 공통 컴포넌트(EventStatusBadge, Badge, Avatar, EmptyState, Dialog 조합 패턴)를 재사용하고 과도한 추상화 없이 구현한다. 완료 후 ROADMAP.md 체크박스는 docs:update-roadmap 스킬로 갱신(직접 Edit 금지).",
+      "summary": "recharts 설치 및 npx shadcn add table로 components/ui/table.tsx 생성 완료. lib/dummy-data.ts에 createDummyUser/createDummyUsers/DUMMY_USERS(12명, admin 1명 이상 보장)를 추가하고 createDummyEvent의 createdBy를 DUMMY_USERS에서 pickRandom하도록 변경, createdAt/updatedAt도 과거 60일 분산으로 바꿔 대시보드 통계가 의미있게 나오도록 했다. getAdminEventRows/getAdminUserRows/getAdminDashboardMetrics/getEventTrend/getUserTrend를 순수 함수로 추가했고 lib/types/components.ts에 AdminMetricCardProps/AdminEventRow/AdminUserRow/ChartPoint/AdminDashboardMetrics 타입을 추가했다. npx tsc --noEmit과 eslint 모두 통과.",
+      "completedAt": "2026-10-23T05:59:05.228Z"
+    },
+    {
+      "id": "54776652-a7ca-43df-8ef4-49e78a09197f",
+      "name": "관리자 공용 UI 컴포넌트 구현 (지표 카드 · 테이블 툴바 · 삭제 다이얼로그)",
+      "description": "이벤트/사용자 관리 페이지와 대시보드에서 공통으로 쓰는 3개 컴포넌트를 components/admin/에 구현한다: MetricCard(지표 카드), AdminTableToolbar(검색+필터 슬롯), AdminDeleteDialog(삭제 확인, trigger/title/description/onConfirm을 prop으로 받는 범용 다이얼로그).",
+      "notes": "DeleteEventDialog를 직접 재사용하지 않고 신규 작성한 이유: 그 컴포넌트는 삭제 후 router.push('/events')가 하드코딩돼 관리자 테이블 행 삭제(페이지 이동 없음)와 동작이 다름. 과도한 범용화는 피하고 이 3개로 한정.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "a0e2d6d5-d8bc-4bc0-aa44-4894b804e5b8"
+        }
+      ],
+      "createdAt": "2026-10-23T05:55:45.934Z",
+      "updatedAt": "2026-10-23T05:59:49.246Z",
+      "relatedFiles": [
+        {
+          "path": "components/admin/metric-card.tsx",
+          "type": "CREATE",
+          "description": "지표 카드"
+        },
+        {
+          "path": "components/admin/admin-table-toolbar.tsx",
+          "type": "CREATE",
+          "description": "검색+필터 툴바"
+        },
+        {
+          "path": "components/admin/admin-delete-dialog.tsx",
+          "type": "CREATE",
+          "description": "범용 삭제 확인 다이얼로그"
+        },
+        {
+          "path": "components/events/delete-event-dialog.tsx",
+          "type": "REFERENCE",
+          "description": "Dialog 조합 패턴 참고"
+        },
+        {
+          "path": "lib/types/components.ts",
+          "type": "REFERENCE",
+          "description": "AdminMetricCardProps 참고"
+        }
+      ],
+      "implementationGuide": "pseudocode:\n- components/admin/metric-card.tsx: AdminMetricCardProps를 받아 Card+CardHeader(아이콘+label)+CardContent(value, text-2xl font-bold) 렌더링. components/ui/card.tsx 재사용.\n- components/admin/admin-table-toolbar.tsx: props { searchValue, onSearchChange, searchPlaceholder, filterValue, onFilterChange, filterOptions: {value,label}[] } — Input(검색) + Select(필터)를 flex gap-2로 배치. \"use client\" 필요(이벤트 핸들러).\n- components/admin/admin-delete-dialog.tsx: props { trigger: ReactNode; title: string; description: string; onConfirm: () => void } — components/events/delete-event-dialog.tsx의 Dialog/DialogTrigger/DialogContent/DialogFooter/DialogClose 조합을 그대로 따르되 trigger를 외부에서 주입받고 onConfirm 호출 후 toast.success 뒤 router 이동 없이 콜백만 실행(관리자 테이블은 같은 페이지에서 목록만 갱신).",
+      "verificationCriteria": "세 컴포넌트가 각각 독립적으로 import되어 타입 에러 없이 렌더링 가능, AdminDeleteDialog는 trigger로 임의 Button을 받아도 동작, eslint 통과",
+      "analysisResult": "Task 006: 관리자 데스크톱 페이지 UI 완성. ROADMAP.md Phase 2의 마지막 Task로, Task 001에서 만든 관리자 영역 빈 껍데기(/admin/login, /admin/(dashboard)/{dashboard,events,users,analytics}, components/layout/admin-sidebar.tsx)를 더미 데이터 기반 실제 UI로 채운다. F012(지표 카드)/F013(이벤트 테이블)/F014(사용자 테이블)/F015(Recharts 통계)를 구현하며, 관리자 로그인은 UI 셸만(실제 OAuth+role 체크는 Task 008). Recharts·shadcn table 신규 설치, lib/dummy-data.ts에 다중 사용자 더미 데이터와 관리자 집계 헬퍼 함수 추가가 선행 과제이며, 기존 공통 컴포넌트(EventStatusBadge, Badge, Avatar, EmptyState, Dialog 조합 패턴)를 재사용하고 과도한 추상화 없이 구현한다. 완료 후 ROADMAP.md 체크박스는 docs:update-roadmap 스킬로 갱신(직접 Edit 금지).",
+      "summary": "components/admin/metric-card.tsx, admin-table-toolbar.tsx, admin-delete-dialog.tsx 3개를 신규 작성했다. MetricCard는 AdminMetricCardProps를 받아 Card 조합으로 아이콘+라벨+값을 렌더링. AdminTableToolbar는 검색 Input과 필터 Select를 받아 상위에서 상태를 제어하는 controlled 컴포넌트로 구현. AdminDeleteDialog는 DeleteEventDialog의 Dialog 조합 패턴을 따르되 trigger/title/description/onConfirm을 prop으로 받아 범용화했고, 삭제 후 라우팅 없이 콜백만 실행하도록 해 관리자 테이블의 같은 페이지 내 목록 갱신 요구에 맞췄다. tsc/eslint 모두 통과.",
+      "completedAt": "2026-10-23T05:59:49.243Z"
+    },
+    {
+      "id": "50618219-5795-4437-b9e7-f5d8be0bb592",
+      "name": "관리자 로그인 페이지 UI 구현",
+      "description": "app/admin/login/page.tsx를 TODO placeholder에서 실제 로그인 폼 UI 셸로 교체한다. 실제 Google OAuth 연동/role 체크는 Task 008에서 구현하므로 이번 작업은 비주얼과 '관리자 전용' 안내 문구만 포함한다.",
+      "notes": "role 체크/에러 처리(일반 사용자 접근 거부)는 넣지 않음 — Task 008 범위. GoogleLoginButton의 next prop은 Task 006 commit에서 이미 구현됨(components/google-login-button.tsx 참고).",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T05:55:45.934Z",
+      "updatedAt": "2026-10-23T06:00:21.886Z",
+      "relatedFiles": [
+        {
+          "path": "app/admin/login/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "로그인 폼 UI 셸"
+        },
+        {
+          "path": "components/google-login-button.tsx",
+          "type": "REFERENCE",
+          "description": "next prop 지원 확인됨"
+        },
+        {
+          "path": "components/ui/card.tsx",
+          "type": "REFERENCE",
+          "description": "Card 레이아웃"
+        }
+      ],
+      "implementationGuide": "pseudocode:\n- 중앙 정렬 Card(Gather Admin 로고 텍스트 + CardTitle '관리자 로그인')\n- CardContent: GoogleLoginButton 재사용(components/google-login-button.tsx, next prop으로 '/admin/dashboard' 전달) 또는 비활성 안내 — PRD상 F010 role 체크가 핵심이라 GoogleLoginButton을 그대로 쓰고 안내 문구 '관리자 계정으로 로그인해주세요. 일반 사용자는 접근할 수 없습니다.'를 CardDescription에 추가\n- 페이지 전체를 min-h-screen flex items-center justify-center bg-muted/30로 데스크톱 중앙 배치",
+      "verificationCriteria": "/admin/login 접속 시 TODO 문구 없이 카드형 로그인 UI와 '관리자 전용' 안내 문구가 보임, 다크모드에서도 정상 렌더링",
+      "analysisResult": "Task 006: 관리자 데스크톱 페이지 UI 완성. ROADMAP.md Phase 2의 마지막 Task로, Task 001에서 만든 관리자 영역 빈 껍데기(/admin/login, /admin/(dashboard)/{dashboard,events,users,analytics}, components/layout/admin-sidebar.tsx)를 더미 데이터 기반 실제 UI로 채운다. F012(지표 카드)/F013(이벤트 테이블)/F014(사용자 테이블)/F015(Recharts 통계)를 구현하며, 관리자 로그인은 UI 셸만(실제 OAuth+role 체크는 Task 008). Recharts·shadcn table 신규 설치, lib/dummy-data.ts에 다중 사용자 더미 데이터와 관리자 집계 헬퍼 함수 추가가 선행 과제이며, 기존 공통 컴포넌트(EventStatusBadge, Badge, Avatar, EmptyState, Dialog 조합 패턴)를 재사용하고 과도한 추상화 없이 구현한다. 완료 후 ROADMAP.md 체크박스는 docs:update-roadmap 스킬로 갱신(직접 Edit 금지).",
+      "summary": "app/admin/login/page.tsx를 TODO 문구에서 실제 Card 기반 로그인 UI로 교체했다. 중앙 정렬 Card에 'Gather Admin' 라벨, '관리자 로그인' 제목, '관리자 계정으로 로그인해주세요. 일반 사용자는 접근할 수 없습니다' 안내 문구를 넣고, 기존 GoogleLoginButton을 next='/admin/dashboard'로 재사용했다. 실제 OAuth role 체크 로직은 추가하지 않았으며 Task 008 범위로 남겼다. tsc/eslint 통과.",
+      "completedAt": "2026-10-23T06:00:21.883Z"
+    },
+    {
+      "id": "a3397f00-3645-429f-8dfc-86aafc4492d1",
+      "name": "관리자 대시보드 메인 페이지 구현 (F012)",
+      "description": "app/admin/(dashboard)/dashboard/page.tsx를 getAdminDashboardMetrics()의 7개 지표를 MetricCard 그리드로 보여주는 페이지로 구현하고, 이벤트 관리/사용자 관리/통계 분석으로 가는 빠른 링크 3개를 추가한다.",
+      "notes": "Server Component로 유지(더미 함수는 동기 순수 함수이므로 async 불필요, Suspense 불필요).",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "a0e2d6d5-d8bc-4bc0-aa44-4894b804e5b8"
+        },
+        {
+          "taskId": "54776652-a7ca-43df-8ef4-49e78a09197f"
+        }
+      ],
+      "createdAt": "2026-10-23T05:55:45.934Z",
+      "updatedAt": "2026-10-23T06:00:49.317Z",
+      "relatedFiles": [
+        {
+          "path": "app/admin/(dashboard)/dashboard/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "지표 카드 + 빠른 링크"
+        },
+        {
+          "path": "components/admin/metric-card.tsx",
+          "type": "DEPENDENCY",
+          "description": "지표 카드 컴포넌트"
+        },
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "DEPENDENCY",
+          "description": "getAdminDashboardMetrics"
+        }
+      ],
+      "implementationGuide": "pseudocode:\n- const metrics = getAdminDashboardMetrics()\n- grid grid-cols-2 lg:grid-cols-4 gap-4로 MetricCard 7개(오늘/이번주/이번달/전체 이벤트, 오늘/이번주/전체 가입자) 배치\n- 하단에 Link 3개(Card 형태, '이벤트 관리 →' 등) → /admin/events, /admin/users, /admin/analytics",
+      "verificationCriteria": "/admin/dashboard 접속 시 7개 지표 카드와 3개 빠른 링크가 더미 수치로 렌더링, 링크 클릭 시 각 페이지로 이동",
+      "analysisResult": "Task 006: 관리자 데스크톱 페이지 UI 완성. ROADMAP.md Phase 2의 마지막 Task로, Task 001에서 만든 관리자 영역 빈 껍데기(/admin/login, /admin/(dashboard)/{dashboard,events,users,analytics}, components/layout/admin-sidebar.tsx)를 더미 데이터 기반 실제 UI로 채운다. F012(지표 카드)/F013(이벤트 테이블)/F014(사용자 테이블)/F015(Recharts 통계)를 구현하며, 관리자 로그인은 UI 셸만(실제 OAuth+role 체크는 Task 008). Recharts·shadcn table 신규 설치, lib/dummy-data.ts에 다중 사용자 더미 데이터와 관리자 집계 헬퍼 함수 추가가 선행 과제이며, 기존 공통 컴포넌트(EventStatusBadge, Badge, Avatar, EmptyState, Dialog 조합 패턴)를 재사용하고 과도한 추상화 없이 구현한다. 완료 후 ROADMAP.md 체크박스는 docs:update-roadmap 스킬로 갱신(직접 Edit 금지).",
+      "summary": "app/admin/(dashboard)/dashboard/page.tsx를 getAdminDashboardMetrics()의 7개 지표(오늘/이번주/이번달/전체 이벤트, 오늘/이번주/전체 가입자)를 MetricCard 그리드(grid-cols-2 lg:grid-cols-4)로 렌더링하도록 구현하고, 이벤트/사용자/통계 관리 페이지로 가는 Link 카드 3개를 추가했다. Server Component로 유지(동기 순수 함수 호출만 있어 async 불필요). tsc/eslint 통과.",
+      "completedAt": "2026-10-23T06:00:49.314Z"
+    },
+    {
+      "id": "4eac9391-d6ea-4c16-b20b-20a9a668989f",
+      "name": "이벤트 관리 테이블 페이지 구현 (F013)",
+      "description": "app/admin/(dashboard)/events/page.tsx를 getAdminEventRows() 기반 테이블로 구현한다. 컬럼: 제목/주최자/날짜/참여자수/상태(EventStatusBadge)/생성일. AdminTableToolbar로 제목·주최자 검색과 상태 필터, 클라이언트 사이드 페이지네이션(20개), 각 행 삭제 버튼(AdminDeleteDialog).",
+      "notes": "삭제는 더미 데이터라 실제 영속성 없음(새로고침 시 복원) — Task 009에서 실제 API 연동. 페이지네이션은 더미 8개뿐이라 20개 초과 시나리오는 UI만 준비(실데이터 확장 대비).",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "a0e2d6d5-d8bc-4bc0-aa44-4894b804e5b8"
+        },
+        {
+          "taskId": "54776652-a7ca-43df-8ef4-49e78a09197f"
+        }
+      ],
+      "createdAt": "2026-10-23T05:55:45.934Z",
+      "updatedAt": "2026-10-23T06:03:10.045Z",
+      "relatedFiles": [
+        {
+          "path": "app/admin/(dashboard)/events/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "서버 컴포넌트, 더미 행 조회"
+        },
+        {
+          "path": "components/admin/event-table.tsx",
+          "type": "CREATE",
+          "description": "검색/필터/페이지네이션 포함 이벤트 테이블"
+        },
+        {
+          "path": "components/common/event-status-badge.tsx",
+          "type": "REFERENCE",
+          "description": "상태 뱃지 재사용"
+        },
+        {
+          "path": "components/admin/admin-table-toolbar.tsx",
+          "type": "DEPENDENCY",
+          "description": "검색+필터 UI"
+        },
+        {
+          "path": "components/admin/admin-delete-dialog.tsx",
+          "type": "DEPENDENCY",
+          "description": "삭제 확인"
+        }
+      ],
+      "implementationGuide": "pseudocode:\n- \"use client\" 컴포넌트 components/admin/event-table.tsx 생성, props { rows: AdminEventRow[] }\n- useState: search, statusFilter, page\n- filtered = rows.filter(r => (제목/주최자 search 포함) && (statusFilter==='all' || r.event.status===statusFilter))\n- paged = filtered.slice((page-1)*20, page*20)\n- shadcn Table/TableHeader/TableBody/TableRow/TableCell로 렌더링, 상태 컬럼은 <EventStatusBadge status={row.event.status}/>, 각 행 끝에 AdminDeleteDialog(trigger=삭제 아이콘버튼, onConfirm=로컬 state에서 제거 후 toast.success)\n- rows.length===0 또는 filtered.length===0이면 EmptyState 표시\n- app/admin/(dashboard)/events/page.tsx(Server Component)는 getAdminEventRows() 호출해 <EventTable rows={...}/>에 전달",
+      "verificationCriteria": "/admin/events에서 8개 더미 이벤트가 테이블로 보이고, 제목/주최자 검색과 상태 필터가 즉시 반영되며, 삭제 버튼 클릭 후 확인하면 해당 행이 목록에서 사라짐",
+      "analysisResult": "Task 006: 관리자 데스크톱 페이지 UI 완성. ROADMAP.md Phase 2의 마지막 Task로, Task 001에서 만든 관리자 영역 빈 껍데기(/admin/login, /admin/(dashboard)/{dashboard,events,users,analytics}, components/layout/admin-sidebar.tsx)를 더미 데이터 기반 실제 UI로 채운다. F012(지표 카드)/F013(이벤트 테이블)/F014(사용자 테이블)/F015(Recharts 통계)를 구현하며, 관리자 로그인은 UI 셸만(실제 OAuth+role 체크는 Task 008). Recharts·shadcn table 신규 설치, lib/dummy-data.ts에 다중 사용자 더미 데이터와 관리자 집계 헬퍼 함수 추가가 선행 과제이며, 기존 공통 컴포넌트(EventStatusBadge, Badge, Avatar, EmptyState, Dialog 조합 패턴)를 재사용하고 과도한 추상화 없이 구현한다. 완료 후 ROADMAP.md 체크박스는 docs:update-roadmap 스킬로 갱신(직접 Edit 금지).",
+      "summary": "components/admin/event-table.tsx를 신규 작성해 제목/주최자/날짜/참여자수/상태(EventStatusBadge)/생성일 컬럼과 AdminTableToolbar 검색+상태 필터, 20개 단위 클라이언트 페이지네이션, 행별 AdminDeleteDialog 삭제를 구현했다. app/admin/(dashboard)/events/page.tsx는 getAdminEventRows()를 호출해 EventTable에 전달하는 서버 컴포넌트로 교체. 부수적으로 npx shadcn add table이 components/ui/table.tsx에 cn을 잘못된 'cn' 패키지에서 import하도록 생성한 버그를 발견해 '@/lib/utils'로 고치고 불필요해진 cn npm 패키지를 제거했다. Playwright MCP로 /admin/events 실제 렌더링·검색(주최자 '윤재호' 필터링 확인)·삭제(토스트+행 제거 확인)까지 E2E 확인 완료. tsc/eslint 통과, 콘솔 에러 없음.",
+      "completedAt": "2026-10-23T06:03:10.043Z"
+    },
+    {
+      "id": "28fd1d19-03f2-414e-aaa1-aa7d86d06bba",
+      "name": "사용자 관리 테이블 페이지 구현 (F014)",
+      "description": "app/admin/(dashboard)/users/page.tsx를 getAdminUserRows() 기반 테이블로 구현한다. 컬럼: 프로필사진(Avatar)/이름/이메일/역할(Badge)/가입일/생성한 이벤트수/참여한 이벤트수. AdminTableToolbar로 이름·이메일 검색과 역할 필터, 클라이언트 사이드 페이지네이션(20개), 각 행 삭제 버튼(AdminDeleteDialog).",
+      "notes": "event-table.tsx와 검색/필터/페이지네이션 state 로직이 유사하지만 컬럼 구조가 달라 별도 파일 유지(공용 추상화는 과설계로 판단).",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "a0e2d6d5-d8bc-4bc0-aa44-4894b804e5b8"
+        },
+        {
+          "taskId": "54776652-a7ca-43df-8ef4-49e78a09197f"
+        }
+      ],
+      "createdAt": "2026-10-23T05:55:45.934Z",
+      "updatedAt": "2026-10-23T06:04:54.203Z",
+      "relatedFiles": [
+        {
+          "path": "app/admin/(dashboard)/users/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "서버 컴포넌트, 더미 사용자 행 조회"
+        },
+        {
+          "path": "components/admin/user-table.tsx",
+          "type": "CREATE",
+          "description": "검색/필터/페이지네이션 포함 사용자 테이블"
+        },
+        {
+          "path": "components/ui/avatar.tsx",
+          "type": "REFERENCE",
+          "description": "프로필 사진"
+        },
+        {
+          "path": "components/admin/admin-table-toolbar.tsx",
+          "type": "DEPENDENCY",
+          "description": "검색+필터 UI"
+        },
+        {
+          "path": "components/admin/admin-delete-dialog.tsx",
+          "type": "DEPENDENCY",
+          "description": "삭제 확인"
+        }
+      ],
+      "implementationGuide": "pseudocode:\n- components/admin/user-table.tsx (\"use client\"), props { rows: AdminUserRow[] }\n- 이벤트 테이블과 동일한 search/filter(역할)/page state 패턴\n- 컬럼: <Avatar><AvatarImage .../><AvatarFallback>{initial}</AvatarFallback></Avatar>, name, email, <Badge variant={role==='admin'?'default':'secondary'}>{role}</Badge>, createdAt(날짜 포맷), createdEventCount, joinedEventCount\n- 본인 삭제 불가 로직은 실제 인증 전이라 생략(요구사항에 명시된 선택적 생략)\n- app/admin/(dashboard)/users/page.tsx는 getAdminUserRows() 호출해 전달",
+      "verificationCriteria": "/admin/users에서 12명 더미 사용자가 테이블로 보이고, 이름/이메일 검색과 역할 필터가 즉시 반영되며, 삭제 버튼 클릭 후 확인하면 해당 행이 목록에서 사라짐",
+      "analysisResult": "Task 006: 관리자 데스크톱 페이지 UI 완성. ROADMAP.md Phase 2의 마지막 Task로, Task 001에서 만든 관리자 영역 빈 껍데기(/admin/login, /admin/(dashboard)/{dashboard,events,users,analytics}, components/layout/admin-sidebar.tsx)를 더미 데이터 기반 실제 UI로 채운다. F012(지표 카드)/F013(이벤트 테이블)/F014(사용자 테이블)/F015(Recharts 통계)를 구현하며, 관리자 로그인은 UI 셸만(실제 OAuth+role 체크는 Task 008). Recharts·shadcn table 신규 설치, lib/dummy-data.ts에 다중 사용자 더미 데이터와 관리자 집계 헬퍼 함수 추가가 선행 과제이며, 기존 공통 컴포넌트(EventStatusBadge, Badge, Avatar, EmptyState, Dialog 조합 패턴)를 재사용하고 과도한 추상화 없이 구현한다. 완료 후 ROADMAP.md 체크박스는 docs:update-roadmap 스킬로 갱신(직접 Edit 금지).",
+      "summary": "components/admin/user-table.tsx를 신규 작성해 프로필/이름/이메일/역할(Badge)/가입일/생성한 이벤트/참여한 이벤트 컬럼과 검색+역할 필터, 20개 페이지네이션, 행별 AdminDeleteDialog를 구현했다. app/admin/(dashboard)/users/page.tsx는 getAdminUserRows()를 전달하는 서버 컴포넌트로 교체. 구현 중 participant.userId가 DUMMY_USERS와 무관한 완전 랜덤 UUID라 '참여한 이벤트' 수가 항상 0으로 나오는 기존 더미 데이터 버그를 발견해, createDummyParticipant의 기본 userId를 pickRandom(DUMMY_USERS).id로 바꾸고 참여자 프로필도 DUMMY_USERS에서 찾아 쓰도록 수정했다(lib/dummy-data.ts, 이벤트 테이블 서브태스크에서 만든 getAdminUserRows 로직과 무관하게 데이터 소스 자체를 고친 것). Playwright MCP로 /admin/users 12명 렌더링, 역할 필터(관리자 1명으로 좁혀짐) 확인 완료. tsc/eslint 통과.",
+      "completedAt": "2026-10-23T06:04:54.200Z"
+    },
+    {
+      "id": "8c66ee7e-57b1-4e60-b16a-24f0b563c6e1",
+      "name": "통계 분석 페이지 구현 (F015, Recharts)",
+      "description": "app/admin/(dashboard)/analytics/page.tsx를 Recharts LineChart 2개(이벤트 생성 추이, 사용자 증가 추이)와 기간 선택 드롭다운(7/30/90일), 요약 카드 3개로 구현한다.",
+      "notes": "Recharts는 기본적으로 클라이언트 전용(ResponsiveContainer가 DOM 측정 필요)이므로 'use client' 경계를 analytics-view.tsx 같은 하위 컴포넌트에 두고 page.tsx는 서버 컴포넌트로 유지하는 쪽을 우선 시도, 안 되면 page.tsx 자체를 \"use client\"로 전환.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "a0e2d6d5-d8bc-4bc0-aa44-4894b804e5b8"
+        },
+        {
+          "taskId": "54776652-a7ca-43df-8ef4-49e78a09197f"
+        }
+      ],
+      "createdAt": "2026-10-23T05:55:45.934Z",
+      "updatedAt": "2026-10-23T06:08:57.352Z",
+      "relatedFiles": [
+        {
+          "path": "app/admin/(dashboard)/analytics/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "통계 분석 페이지"
+        },
+        {
+          "path": "components/admin/trend-line-chart.tsx",
+          "type": "CREATE",
+          "description": "Recharts LineChart 카드"
+        },
+        {
+          "path": "components/admin/analytics-view.tsx",
+          "type": "CREATE",
+          "description": "기간 선택 상태를 가진 클라이언트 뷰(필요 시)"
+        },
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "DEPENDENCY",
+          "description": "getEventTrend/getUserTrend"
+        }
+      ],
+      "implementationGuide": "pseudocode:\n- components/admin/trend-line-chart.tsx (\"use client\"): props { title, data: ChartPoint[] } — ResponsiveContainer+LineChart+XAxis(date)+YAxis+Tooltip+Line(dataKey='count', stroke=var(--primary))를 Card로 감싸 렌더링\n- app/admin/(dashboard)/analytics/page.tsx는 \"use client\"로 전환(기간 select 상태 필요) 또는 클라이언트 서브컴포넌트(components/admin/analytics-view.tsx)에 위임해 서버 컴포넌트 유지\n- useState(period: 7|30|90), getEventTrend(period)/getUserTrend(period) 재계산\n- Select(7/30/90일)로 period 변경\n- 요약 카드 3개: 총 이벤트 수(DUMMY_EVENTS.length), 총 사용자 수(DUMMY_USERS.length), 평균 참여자 수(getAdminEventRows 평균 participantCount, 소수1자리)",
+      "verificationCriteria": "/admin/analytics에서 두 Line Chart가 7일 기준 기본 렌더링되고, 기간 드롭다운을 30/90일로 바꾸면 차트 데이터 포인트 수가 바뀜, 요약 카드 3개가 숫자로 표시됨, 콘솔에 Recharts 관련 하이드레이션 에러 없음",
+      "analysisResult": "Task 006: 관리자 데스크톱 페이지 UI 완성. ROADMAP.md Phase 2의 마지막 Task로, Task 001에서 만든 관리자 영역 빈 껍데기(/admin/login, /admin/(dashboard)/{dashboard,events,users,analytics}, components/layout/admin-sidebar.tsx)를 더미 데이터 기반 실제 UI로 채운다. F012(지표 카드)/F013(이벤트 테이블)/F014(사용자 테이블)/F015(Recharts 통계)를 구현하며, 관리자 로그인은 UI 셸만(실제 OAuth+role 체크는 Task 008). Recharts·shadcn table 신규 설치, lib/dummy-data.ts에 다중 사용자 더미 데이터와 관리자 집계 헬퍼 함수 추가가 선행 과제이며, 기존 공통 컴포넌트(EventStatusBadge, Badge, Avatar, EmptyState, Dialog 조합 패턴)를 재사용하고 과도한 추상화 없이 구현한다. 완료 후 ROADMAP.md 체크박스는 docs:update-roadmap 스킬로 갱신(직접 Edit 금지).",
+      "summary": "components/admin/trend-line-chart.tsx(Recharts LineChart를 Card로 감싼 공용 컴포넌트)와 components/admin/analytics-view.tsx(기간 select 상태를 가진 클라이언트 뷰)를 신규 작성했다. app/admin/(dashboard)/analytics/page.tsx는 Server Component로 7/30/90일 트렌드를 모두 미리 계산해 AnalyticsView에 props로 전달하는 방식을 택해, lib/dummy-data.ts의 모듈스코프 랜덤 데이터셋이 서버/클라이언트에서 두 번 인스턴스화되어 하이드레이션 불일치가 나는 위험을 원천적으로 피했다(클라이언트 컴포넌트는 dummy-data를 import하지 않음). 대시보드와 동일하게 Date.now() 기반 집계가 cacheComponents 프리렌더링과 충돌하는 문제를 connection()+Suspense로 해결했다. 요약 카드는 기존 MetricCard를 재사용(총 이벤트/총 사용자/평균 참여자 수). Playwright MCP로 /admin/analytics 확인: 요약 카드 8/12/5.1 정상, 두 LineChart가 7일 기준(10/17~10/23) 렌더링, 기간을 30일로 바꾸면 X축이 09/26~10/23으로 확장되는 것까지 확인. 참고로 npm install recharts가 ROADMAP에 적힌 2.x가 아닌 최신 3.10.1을 설치했음(핸드폭 API는 동일하게 동작, 의도적으로 다운그레이드하지 않음). tsc/eslint 통과, 콘솔 에러 없음.",
+      "completedAt": "2026-10-23T06:08:57.338Z"
+    },
+    {
+      "id": "e96fa9e4-19f5-40d4-9b20-0566ad25939c",
+      "name": "profiles.role 컬럼 추가 마이그레이션 (Task 007)",
+      "description": "public.profiles 테이블에 role 컬럼을 추가해 관리자 권한 체크(Task 008)의 기반을 마련한다. shrimp-rules.md 규칙에 따라 새 users 테이블을 만들지 않고 기존 profiles를 사용자 테이블로 재사용한다.",
+      "notes": "handle_new_user()는 role을 지정하지 않고 insert하므로 기본값 'user'가 그대로 적용되어 기존 트리거와 호환된다. 기존 SELECT/INSERT/UPDATE RLS 정책은 컬럼 추가와 무관하게 그대로 유효하다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T06:43:42.898Z",
+      "updatedAt": "2026-10-23T06:44:22.903Z",
+      "relatedFiles": [
+        {
+          "path": "supabase/migrations/20261023062709_profiles_add_role.sql",
+          "type": "CREATE",
+          "description": "profiles.role 컬럼 추가 마이그레이션"
+        },
+        {
+          "path": "supabase/migrations/20261020155024_create_profiles.sql",
+          "type": "REFERENCE",
+          "description": "기존 profiles 테이블/RLS 정의 참고"
+        }
+      ],
+      "implementationGuide": "supabase/migrations/20261023062709_profiles_add_role.sql 작성: alter table public.profiles add column role text not null default 'user', add constraint profiles_role_check check (role in ('user','admin')); 이후 mcp__supabase__apply_migration으로 적용.",
+      "verificationCriteria": "mcp__supabase__list_tables로 profiles.role 컬럼(text, not null, default 'user')과 check 제약이 존재함을 확인. handle_new_user() 트리거를 통한 신규 가입 시 role='user'로 insert됨.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 3, Task 007(데이터베이스 스키마 및 Supabase 초기 설정)의 최종 목표: Phase 2에서 더미 데이터로 완성된 UI(이벤트/참여자/프로필 임시 타입)를 실제 Supabase 스키마로 뒷받침한다. 핵심 설계 결정(사용자 승인 완료): (1) shrimp-rules.md 규칙에 따라 새 users 테이블을 만들지 않고 기존 public.profiles를 사용자 테이블로 재사용하며 role 컬럼만 추가한다. (2) events.status는 컬럼으로 저장하지 않고 조회 시점에 event_date와 now()를 비교해 파생한다(pg_cron 불필요, 항상 정확). (3) events.created_by는 profiles(id)를 on delete cascade로 참조해 호스트 계정 삭제 시 이벤트/참여자 기록도 함께 연쇄 삭제된다. (4) invite_code는 DB가 생성하지 않고 unique not null 제약만 강제하며 실제 생성은 Task 009 애플리케이션 코드 책임이다. (5) event_participants에는 참여자 강제 퇴장(호스트가 타인을 내보내는) 정책을 포함하지 않고 본인 탈퇴만 허용한다. 모든 스키마 변경은 supabase/migrations/ 파일 작성 → mcp__supabase__apply_migration → mcp__supabase__generate_typescript_types 순서로만 진행했고 database.types.ts는 손으로 수정하지 않았다. security definer 트리거 함수(handle_new_user, handle_new_event)의 execute 권한은 anon/authenticated에서 명시적으로 회수했다. 이 작업은 이미 구현·적용·검증(npx tsc --noEmit, npm run lint 통과)까지 완료된 상태이며, 이번 split_tasks는 그 완료된 작업을 shrimp task manager에 사후 기록하기 위한 것이다 — 각 서브태스크는 split_tasks 완료 후 update_task로 status=completed, summary=실제 수행 내역, completedAt으로 갱신할 예정이다.",
+      "summary": "supabase/migrations/20261023062709_profiles_add_role.sql 작성 및 mcp__supabase__apply_migration으로 적용 완료. profiles.role text not null default 'user' + check(user/admin) 제약 추가. handle_new_user() 트리거와 기존 RLS 정책이 변경 없이 호환됨을 확인. list_tables로 컬럼 반영 확인.",
+      "completedAt": "2026-10-23T06:44:22.899Z"
+    },
+    {
+      "id": "25e88e6d-9934-46ff-946d-777bcb0be253",
+      "name": "events 테이블 생성 + RLS + 인덱스 (Task 007)",
+      "description": "이벤트 정보를 저장하는 public.events 테이블을 신설한다. status 컬럼은 두지 않고 애플리케이션/타입 레이어에서 event_date 기준으로 파생시키기로 결정했다. invite_code는 unique 제약만 강제하고 생성 로직은 Task 009로 미룬다.",
+      "notes": "created_by는 profiles(id) on delete cascade로 참조 — 호스트 계정 삭제 시 이벤트도 연쇄 삭제됨(사용자 확정 결정). updated_at은 기존 public.handle_updated_at() 함수를 재사용(재구현하지 않음). RLS는 profiles의 '전체 공개 SELECT + 본인만 수정' 패턴을 그대로 따른다(/join/[invite_code]가 비로그인 미리보기를 요구하므로 공개 SELECT 필요).",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "e96fa9e4-19f5-40d4-9b20-0566ad25939c"
+        }
+      ],
+      "createdAt": "2026-10-23T06:43:42.898Z",
+      "updatedAt": "2026-10-23T06:44:34.428Z",
+      "relatedFiles": [
+        {
+          "path": "supabase/migrations/20261023062746_create_events.sql",
+          "type": "CREATE",
+          "description": "events 테이블/인덱스/트리거/RLS 마이그레이션"
+        },
+        {
+          "path": "components/events/event-form.tsx",
+          "type": "REFERENCE",
+          "description": "title/description/location 길이 제약의 근거가 된 Zod 스키마"
+        },
+        {
+          "path": "app/join/[invite_code]/page.tsx",
+          "type": "REFERENCE",
+          "description": "비로그인 공개 SELECT가 필요한 근거"
+        }
+      ],
+      "implementationGuide": "supabase/migrations/20261023062746_create_events.sql 작성: create table public.events(id uuid pk default gen_random_uuid(), title text not null check(char_length between 1 and 50), description text check(<=500자 or null), location text not null check(1~100자), event_date timestamptz not null, cover_image_url text, invite_code text not null unique check(char_length>=6), created_by uuid not null references profiles(id) on delete cascade, created_at/updated_at timestamptz default now()). create index idx_events_created_by on events(created_by). create trigger on_events_updated ... execute function public.handle_updated_at(). enable row level security. 4개 정책: 공개 SELECT(using true), 본인 INSERT(auth.uid()=created_by), 본인 UPDATE, 본인 DELETE. mcp__supabase__apply_migration으로 적용.",
+      "verificationCriteria": "mcp__supabase__list_tables로 events 테이블(RLS enabled, 컬럼/제약 설계대로)과 idx_events_created_by 인덱스 존재 확인. invite_code unique 제약 위반 시 insert 실패, 비로그인(anon) 상태로도 SELECT 가능, 타인 소유 이벤트는 UPDATE/DELETE 불가함을 RLS로 보장.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 3, Task 007(데이터베이스 스키마 및 Supabase 초기 설정)의 최종 목표: Phase 2에서 더미 데이터로 완성된 UI(이벤트/참여자/프로필 임시 타입)를 실제 Supabase 스키마로 뒷받침한다. 핵심 설계 결정(사용자 승인 완료): (1) shrimp-rules.md 규칙에 따라 새 users 테이블을 만들지 않고 기존 public.profiles를 사용자 테이블로 재사용하며 role 컬럼만 추가한다. (2) events.status는 컬럼으로 저장하지 않고 조회 시점에 event_date와 now()를 비교해 파생한다(pg_cron 불필요, 항상 정확). (3) events.created_by는 profiles(id)를 on delete cascade로 참조해 호스트 계정 삭제 시 이벤트/참여자 기록도 함께 연쇄 삭제된다. (4) invite_code는 DB가 생성하지 않고 unique not null 제약만 강제하며 실제 생성은 Task 009 애플리케이션 코드 책임이다. (5) event_participants에는 참여자 강제 퇴장(호스트가 타인을 내보내는) 정책을 포함하지 않고 본인 탈퇴만 허용한다. 모든 스키마 변경은 supabase/migrations/ 파일 작성 → mcp__supabase__apply_migration → mcp__supabase__generate_typescript_types 순서로만 진행했고 database.types.ts는 손으로 수정하지 않았다. security definer 트리거 함수(handle_new_user, handle_new_event)의 execute 권한은 anon/authenticated에서 명시적으로 회수했다. 이 작업은 이미 구현·적용·검증(npx tsc --noEmit, npm run lint 통과)까지 완료된 상태이며, 이번 split_tasks는 그 완료된 작업을 shrimp task manager에 사후 기록하기 위한 것이다 — 각 서브태스크는 split_tasks 완료 후 update_task로 status=completed, summary=실제 수행 내역, completedAt으로 갱신할 예정이다.",
+      "summary": "supabase/migrations/20261023062746_create_events.sql 작성 및 적용 완료. events 테이블(title/description/location 길이 제약, invite_code unique, created_by→profiles on delete cascade), idx_events_created_by 인덱스, handle_updated_at() 재사용 트리거, RLS 4개(공개 SELECT, 본인 insert/update/delete) 생성. status 컬럼은 의도적으로 두지 않음(파생 방식 채택). list_tables로 RLS enabled 및 스키마 확인.",
+      "completedAt": "2026-10-23T06:44:34.425Z"
+    },
+    {
+      "id": "7d15139d-e77d-418b-894c-04250a28e028",
+      "name": "event_participants 테이블 생성 + 호스트 자동 등록 트리거 + RLS (Task 007)",
+      "description": "이벤트별 참여자(호스트 포함) 매핑을 저장하는 public.event_participants 테이블을 신설하고, 이벤트 생성 시 호스트를 자동으로 참여자로 등록하는 트리거와 RLS 재귀를 피하기 위한 멤버십 체크 헬퍼 함수를 구현한다. 참여자 강제 퇴장 기능은 포함하지 않는다(사용자 확정 결정).",
+      "notes": "handle_new_event() 트리거는 기존 handle_new_user()와 동일한 security definer 패턴을 재사용하며, anon/authenticated의 execute 권한을 명시적으로 회수한다(shrimp-rules.md: security definer 함수 execute 재부여 금지 원칙의 연장). is_event_member() 헬퍼는 RLS 정책 내부의 재귀 참조 문제를 피하기 위한 것으로, 다음 작업(하드닝)에서 private 스키마로 이동된다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "e96fa9e4-19f5-40d4-9b20-0566ad25939c"
+        },
+        {
+          "taskId": "25e88e6d-9934-46ff-946d-777bcb0be253"
+        }
+      ],
+      "createdAt": "2026-10-23T06:43:42.898Z",
+      "updatedAt": "2026-10-23T06:44:42.374Z",
+      "relatedFiles": [
+        {
+          "path": "supabase/migrations/20261023062757_create_event_participants.sql",
+          "type": "CREATE",
+          "description": "event_participants 테이블/트리거/헬퍼/RLS 마이그레이션"
+        },
+        {
+          "path": "supabase/migrations/20261020155051_restrict_handle_new_user_execute.sql",
+          "type": "REFERENCE",
+          "description": "security definer 함수 execute 회수 패턴 참고"
+        }
+      ],
+      "implementationGuide": "supabase/migrations/20261023062757_create_event_participants.sql 작성: create table event_participants(id uuid pk, event_id uuid not null references events(id) on delete cascade, user_id uuid not null references profiles(id) on delete cascade, role text not null default 'participant' check(in host/participant), joined_at timestamptz default now(), unique(event_id,user_id)). 인덱스 2개(event_id, user_id). create function handle_new_event() security definer — events insert 시 (event_id, created_by, 'host')를 on conflict do nothing으로 insert, trigger on_event_created after insert on events. revoke execute from public/anon/authenticated. create function is_event_member(p_event_id) security definer stable — ep 멤버 또는 events.created_by 매치 여부 반환. RLS 3개: SELECT(is_event_member), INSERT(auth.uid()=user_id and role='participant'), DELETE(auth.uid()=user_id). mcp__supabase__apply_migration으로 적용.",
+      "verificationCriteria": "새 이벤트 insert 시 event_participants에 호스트(role='host') 행이 자동 생성됨. 멤버가 아닌 사용자는 event_participants SELECT 불가. 본인만 참여(insert)/탈퇴(delete) 가능. handle_new_event()의 execute 권한이 anon/authenticated에 없음을 advisor 또는 권한 조회로 확인.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 3, Task 007(데이터베이스 스키마 및 Supabase 초기 설정)의 최종 목표: Phase 2에서 더미 데이터로 완성된 UI(이벤트/참여자/프로필 임시 타입)를 실제 Supabase 스키마로 뒷받침한다. 핵심 설계 결정(사용자 승인 완료): (1) shrimp-rules.md 규칙에 따라 새 users 테이블을 만들지 않고 기존 public.profiles를 사용자 테이블로 재사용하며 role 컬럼만 추가한다. (2) events.status는 컬럼으로 저장하지 않고 조회 시점에 event_date와 now()를 비교해 파생한다(pg_cron 불필요, 항상 정확). (3) events.created_by는 profiles(id)를 on delete cascade로 참조해 호스트 계정 삭제 시 이벤트/참여자 기록도 함께 연쇄 삭제된다. (4) invite_code는 DB가 생성하지 않고 unique not null 제약만 강제하며 실제 생성은 Task 009 애플리케이션 코드 책임이다. (5) event_participants에는 참여자 강제 퇴장(호스트가 타인을 내보내는) 정책을 포함하지 않고 본인 탈퇴만 허용한다. 모든 스키마 변경은 supabase/migrations/ 파일 작성 → mcp__supabase__apply_migration → mcp__supabase__generate_typescript_types 순서로만 진행했고 database.types.ts는 손으로 수정하지 않았다. security definer 트리거 함수(handle_new_user, handle_new_event)의 execute 권한은 anon/authenticated에서 명시적으로 회수했다. 이 작업은 이미 구현·적용·검증(npx tsc --noEmit, npm run lint 통과)까지 완료된 상태이며, 이번 split_tasks는 그 완료된 작업을 shrimp task manager에 사후 기록하기 위한 것이다 — 각 서브태스크는 split_tasks 완료 후 update_task로 status=completed, summary=실제 수행 내역, completedAt으로 갱신할 예정이다.",
+      "summary": "supabase/migrations/20261023062757_create_event_participants.sql 작성 및 적용 완료. event_participants 테이블(unique(event_id,user_id)), 인덱스 2개, handle_new_event() security definer 트리거(호스트 자동 등록, anon/authenticated execute 회수), is_event_member() 헬퍼, RLS 3개(멤버만 조회, 본인만 참여/탈퇴) 생성. 강제 퇴장 정책은 의도적으로 제외.",
+      "completedAt": "2026-10-23T06:44:42.372Z"
+    },
+    {
+      "id": "880a8c72-5954-46c5-b408-6cc85c9c7f5d",
+      "name": "event-covers Storage 버킷 및 접근 정책 설정 (Task 007)",
+      "description": "이벤트 커버 이미지를 저장할 Supabase Storage 버킷 event-covers를 생성하고, 공개 읽기 + 호스트 전용 쓰기 정책을 설정한다. 실제 업로드 UI/로직은 Task 009 범위이며 이번 작업은 버킷/정책만 준비한다.",
+      "notes": "경로 컨벤션은 event-covers/<event_id>/<filename>으로 가정하며, Task 009 구현 시 이 컨벤션을 따라야 한다. event-form.tsx에는 아직 업로드 UI 자체가 없음(폼에 '추후 지원' 안내문만 있음)을 확인했다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "25e88e6d-9934-46ff-946d-777bcb0be253"
+        }
+      ],
+      "createdAt": "2026-10-23T06:43:42.898Z",
+      "updatedAt": "2026-10-23T06:44:50.704Z",
+      "relatedFiles": [
+        {
+          "path": "supabase/migrations/20261023062813_storage_event_covers.sql",
+          "type": "CREATE",
+          "description": "event-covers 버킷 및 storage.objects 정책 마이그레이션"
+        },
+        {
+          "path": "components/events/event-form.tsx",
+          "type": "REFERENCE",
+          "description": "커버 이미지 업로드 UI가 아직 없음을 확인한 근거"
+        }
+      ],
+      "implementationGuide": "supabase/migrations/20261023062813_storage_event_covers.sql 작성: insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values('event-covers','event-covers',true,5242880,['image/jpeg','image/png','image/webp']) on conflict do nothing. storage.objects 정책 3개: 공개 SELECT(bucket_id='event-covers'), 호스트만 INSERT/UPDATE/DELETE(bucket_id='event-covers' and auth.uid() is not null and events.created_by=auth.uid() where events.id::text = (storage.foldername(name))[1]). mcp__supabase__apply_migration으로 적용.",
+      "verificationCriteria": "mcp__supabase__list 또는 execute_sql로 storage.buckets에 event-covers(public=true, 5MB 제한, 3개 MIME 타입) 존재 확인. 비로그인도 공개 객체 조회 가능, 타인 소유 이벤트 경로로의 업로드/삭제는 정책으로 거부됨.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 3, Task 007(데이터베이스 스키마 및 Supabase 초기 설정)의 최종 목표: Phase 2에서 더미 데이터로 완성된 UI(이벤트/참여자/프로필 임시 타입)를 실제 Supabase 스키마로 뒷받침한다. 핵심 설계 결정(사용자 승인 완료): (1) shrimp-rules.md 규칙에 따라 새 users 테이블을 만들지 않고 기존 public.profiles를 사용자 테이블로 재사용하며 role 컬럼만 추가한다. (2) events.status는 컬럼으로 저장하지 않고 조회 시점에 event_date와 now()를 비교해 파생한다(pg_cron 불필요, 항상 정확). (3) events.created_by는 profiles(id)를 on delete cascade로 참조해 호스트 계정 삭제 시 이벤트/참여자 기록도 함께 연쇄 삭제된다. (4) invite_code는 DB가 생성하지 않고 unique not null 제약만 강제하며 실제 생성은 Task 009 애플리케이션 코드 책임이다. (5) event_participants에는 참여자 강제 퇴장(호스트가 타인을 내보내는) 정책을 포함하지 않고 본인 탈퇴만 허용한다. 모든 스키마 변경은 supabase/migrations/ 파일 작성 → mcp__supabase__apply_migration → mcp__supabase__generate_typescript_types 순서로만 진행했고 database.types.ts는 손으로 수정하지 않았다. security definer 트리거 함수(handle_new_user, handle_new_event)의 execute 권한은 anon/authenticated에서 명시적으로 회수했다. 이 작업은 이미 구현·적용·검증(npx tsc --noEmit, npm run lint 통과)까지 완료된 상태이며, 이번 split_tasks는 그 완료된 작업을 shrimp task manager에 사후 기록하기 위한 것이다 — 각 서브태스크는 split_tasks 완료 후 update_task로 status=completed, summary=실제 수행 내역, completedAt으로 갱신할 예정이다.",
+      "summary": "supabase/migrations/20261023062813_storage_event_covers.sql 작성 및 적용 완료. event-covers 버킷(public, 5MB, jpeg/png/webp) 생성, storage.objects 정책 3개(공개 SELECT, 호스트만 INSERT/UPDATE/DELETE, 경로 컨벤션 event-covers/<event_id>/<filename>) 적용. 실제 업로드 UI는 Task 009 범위로 의도적으로 제외.",
+      "completedAt": "2026-10-23T06:44:50.700Z"
+    },
+    {
+      "id": "4c4b26ee-1b56-473e-afac-1d498d38aa39",
+      "name": "event_participants Realtime publication 등록 (Task 007)",
+      "description": "참여자 목록 실시간 업데이트(F005/F007)를 위해 event_participants 테이블을 supabase_realtime publication에 추가한다. events 테이블은 실시간 요구사항이 없어 publication에 포함하지 않는다.",
+      "notes": "ROADMAP/PRD 모두 '실시간 참여자 목록'만 요구하므로 이벤트 정보 자체의 실시간 갱신은 범위에 포함하지 않았다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "7d15139d-e77d-418b-894c-04250a28e028"
+        }
+      ],
+      "createdAt": "2026-10-23T06:43:42.898Z",
+      "updatedAt": "2026-10-23T06:44:58.283Z",
+      "relatedFiles": [
+        {
+          "path": "supabase/migrations/20261023062829_realtime_event_participants.sql",
+          "type": "CREATE",
+          "description": "event_participants Realtime publication 등록 마이그레이션"
+        }
+      ],
+      "implementationGuide": "supabase/migrations/20261023062829_realtime_event_participants.sql 작성: alter publication supabase_realtime add table public.event_participants; mcp__supabase__apply_migration으로 적용.",
+      "verificationCriteria": "pg_publication_tables 조회 시 supabase_realtime publication에 public.event_participants가 포함됨을 확인.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 3, Task 007(데이터베이스 스키마 및 Supabase 초기 설정)의 최종 목표: Phase 2에서 더미 데이터로 완성된 UI(이벤트/참여자/프로필 임시 타입)를 실제 Supabase 스키마로 뒷받침한다. 핵심 설계 결정(사용자 승인 완료): (1) shrimp-rules.md 규칙에 따라 새 users 테이블을 만들지 않고 기존 public.profiles를 사용자 테이블로 재사용하며 role 컬럼만 추가한다. (2) events.status는 컬럼으로 저장하지 않고 조회 시점에 event_date와 now()를 비교해 파생한다(pg_cron 불필요, 항상 정확). (3) events.created_by는 profiles(id)를 on delete cascade로 참조해 호스트 계정 삭제 시 이벤트/참여자 기록도 함께 연쇄 삭제된다. (4) invite_code는 DB가 생성하지 않고 unique not null 제약만 강제하며 실제 생성은 Task 009 애플리케이션 코드 책임이다. (5) event_participants에는 참여자 강제 퇴장(호스트가 타인을 내보내는) 정책을 포함하지 않고 본인 탈퇴만 허용한다. 모든 스키마 변경은 supabase/migrations/ 파일 작성 → mcp__supabase__apply_migration → mcp__supabase__generate_typescript_types 순서로만 진행했고 database.types.ts는 손으로 수정하지 않았다. security definer 트리거 함수(handle_new_user, handle_new_event)의 execute 권한은 anon/authenticated에서 명시적으로 회수했다. 이 작업은 이미 구현·적용·검증(npx tsc --noEmit, npm run lint 통과)까지 완료된 상태이며, 이번 split_tasks는 그 완료된 작업을 shrimp task manager에 사후 기록하기 위한 것이다 — 각 서브태스크는 split_tasks 완료 후 update_task로 status=completed, summary=실제 수행 내역, completedAt으로 갱신할 예정이다.",
+      "summary": "supabase/migrations/20261023062829_realtime_event_participants.sql 작성 및 적용 완료. alter publication supabase_realtime add table public.event_participants 실행, pg_publication_tables 조회로 등록 확인. events 테이블은 실시간 요구사항이 없어 의도적으로 제외.",
+      "completedAt": "2026-10-23T06:44:58.280Z"
+    },
+    {
+      "id": "074f633f-d29c-4899-af37-feac0d966a9e",
+      "name": "RLS 보안/성능 advisor 대응 하드닝 (Task 007)",
+      "description": "events/event_participants 마이그레이션 적용 후 mcp__supabase__get_advisors로 재확인한 결과 발견된 보안/성능 경고 2건을 해소한다: (1) is_event_member()가 public 스키마에 있어 PostgREST RPC로 anon/authenticated에 직접 호출 가능했던 보안 경고, (2) RLS 정책들이 auth.uid()를 직접 호출해 row마다 재평가되는 성능 경고.",
+      "notes": "profiles 테이블의 기존(Task 007 이전) RLS 정책에도 동일한 auth.uid() 성능 패턴이 있으나 이번 Task 범위 밖이라 손대지 않았다 — 필요 시 별도 Task로 분리 권장. unused_index INFO 경고 3건은 테이블에 데이터가 없어 발생한 것으로 실제 문제가 아니다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "25e88e6d-9934-46ff-946d-777bcb0be253"
+        },
+        {
+          "taskId": "7d15139d-e77d-418b-894c-04250a28e028"
+        }
+      ],
+      "createdAt": "2026-10-23T06:43:42.898Z",
+      "updatedAt": "2026-10-23T06:45:07.745Z",
+      "relatedFiles": [
+        {
+          "path": "supabase/migrations/20261023063427_harden_event_rls_policies.sql",
+          "type": "CREATE",
+          "description": "advisor 보안/성능 경고 대응 하드닝 마이그레이션"
+        }
+      ],
+      "implementationGuide": "supabase/migrations/20261023063427_harden_event_rls_policies.sql 작성: create schema if not exists private; grant usage on schema private to authenticated; is_event_member() 함수를 private 스키마로 재생성(기존 public.is_event_member drop); events/event_participants의 모든 RLS 정책을 auth.uid() → (select auth.uid())로, is_event_member(event_id) → private.is_event_member(event_id)로 교체(policy drop 후 재생성). mcp__supabase__apply_migration으로 적용 후 mcp__supabase__get_advisors로 재확인.",
+      "verificationCriteria": "mcp__supabase__get_advisors(security, performance) 재실행 시 events/event_participants 관련 WARN이 모두 해소됨. /rest/v1/rpc/is_event_member 호출이 더 이상 PostgREST에 노출되지 않음(함수가 private 스키마로 이동).",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 3, Task 007(데이터베이스 스키마 및 Supabase 초기 설정)의 최종 목표: Phase 2에서 더미 데이터로 완성된 UI(이벤트/참여자/프로필 임시 타입)를 실제 Supabase 스키마로 뒷받침한다. 핵심 설계 결정(사용자 승인 완료): (1) shrimp-rules.md 규칙에 따라 새 users 테이블을 만들지 않고 기존 public.profiles를 사용자 테이블로 재사용하며 role 컬럼만 추가한다. (2) events.status는 컬럼으로 저장하지 않고 조회 시점에 event_date와 now()를 비교해 파생한다(pg_cron 불필요, 항상 정확). (3) events.created_by는 profiles(id)를 on delete cascade로 참조해 호스트 계정 삭제 시 이벤트/참여자 기록도 함께 연쇄 삭제된다. (4) invite_code는 DB가 생성하지 않고 unique not null 제약만 강제하며 실제 생성은 Task 009 애플리케이션 코드 책임이다. (5) event_participants에는 참여자 강제 퇴장(호스트가 타인을 내보내는) 정책을 포함하지 않고 본인 탈퇴만 허용한다. 모든 스키마 변경은 supabase/migrations/ 파일 작성 → mcp__supabase__apply_migration → mcp__supabase__generate_typescript_types 순서로만 진행했고 database.types.ts는 손으로 수정하지 않았다. security definer 트리거 함수(handle_new_user, handle_new_event)의 execute 권한은 anon/authenticated에서 명시적으로 회수했다. 이 작업은 이미 구현·적용·검증(npx tsc --noEmit, npm run lint 통과)까지 완료된 상태이며, 이번 split_tasks는 그 완료된 작업을 shrimp task manager에 사후 기록하기 위한 것이다 — 각 서브태스크는 split_tasks 완료 후 update_task로 status=completed, summary=실제 수행 내역, completedAt으로 갱신할 예정이다.",
+      "summary": "1차 마이그레이션 5개 적용 후 mcp__supabase__get_advisors로 발견된 보안(is_event_member public 스키마 RPC 노출)/성능(auth.uid() row별 재평가) 경고 2건을 supabase/migrations/20261023063427_harden_event_rls_policies.sql로 해소. private 스키마로 헬퍼 함수 이동, (select auth.uid()) 패턴 적용. 재확인 결과 events/event_participants 관련 WARN 모두 해소(기존 profiles 정책의 동일 패턴은 범위 밖으로 남김).",
+      "completedAt": "2026-10-23T06:45:07.742Z"
+    },
+    {
+      "id": "1838bbc7-1e21-4792-b400-571e4c648778",
+      "name": "database.types.ts 재생성 및 lib/types 임시 타입 교체 (Task 007)",
+      "description": "6개 마이그레이션 적용이 모두 끝난 뒤 lib/supabase/database.types.ts를 재생성하고, lib/types/{event,participant,user}.ts를 Task 002에서 만든 임시 타입 대신 DB 타입 기반으로 교체한다. UI의 camelCase 계약(eventDate, createdBy 등)은 그대로 유지하면서 snake_case DB 컬럼과의 매퍼 함수를 제공한다.",
+      "notes": "lib/dummy-data.ts는 이번 작업에서 수정하지 않는다 — 새 타입의 필드 모양이 기존 더미 데이터 생성 함수의 반환 모양과 정확히 일치하도록 설계해 컴파일이 깨지지 않게 했다(더미 데이터의 실제 쿼리 교체는 Task 009/010 범위). database.types.ts는 생성 파일이므로 CLI로만 재생성하고 손으로 수정하지 않는다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "e96fa9e4-19f5-40d4-9b20-0566ad25939c"
+        },
+        {
+          "taskId": "25e88e6d-9934-46ff-946d-777bcb0be253"
+        },
+        {
+          "taskId": "7d15139d-e77d-418b-894c-04250a28e028"
+        },
+        {
+          "taskId": "880a8c72-5954-46c5-b408-6cc85c9c7f5d"
+        },
+        {
+          "taskId": "4c4b26ee-1b56-473e-afac-1d498d38aa39"
+        },
+        {
+          "taskId": "074f633f-d29c-4899-af37-feac0d966a9e"
+        }
+      ],
+      "createdAt": "2026-10-23T06:43:42.898Z",
+      "updatedAt": "2026-10-23T06:45:16.360Z",
+      "relatedFiles": [
+        {
+          "path": "lib/supabase/database.types.ts",
+          "type": "TO_MODIFY",
+          "description": "CLI로 재생성되는 생성 파일(손으로 수정 금지)"
+        },
+        {
+          "path": "lib/types/event.ts",
+          "type": "TO_MODIFY",
+          "description": "DB 타입 기반 Event/EventStatus/computeEventStatus/toEvent로 교체"
+        },
+        {
+          "path": "lib/types/participant.ts",
+          "type": "TO_MODIFY",
+          "description": "DB 타입 기반 EventParticipant/toEventParticipant로 교체"
+        },
+        {
+          "path": "lib/types/user.ts",
+          "type": "TO_MODIFY",
+          "description": "DB 타입 기반 UserProfile(role 포함)/toUserProfile로 교체"
+        },
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "REFERENCE",
+          "description": "새 타입과 필드 모양이 일치해 수정 없이 컴파일되는지 확인용"
+        }
+      ],
+      "implementationGuide": "mcp__supabase__generate_typescript_types 실행 → lib/supabase/database.types.ts 덮어쓰기. lib/types/event.ts: EventRow=Tables<'events'>에서 필드별 타입을 가져와 camelCase Event 인터페이스 구성, status는 별도 EventStatus 타입 + computeEventStatus(eventDateIso, now?) 파생 함수, toEvent(row, now?) 매퍼. lib/types/participant.ts: 동일 패턴으로 EventParticipant + toEventParticipant(row). lib/types/user.ts: profiles Row 기반 UserProfile(role 포함) + toUserProfile(row). 완료 후 npx tsc --noEmit, npm run lint로 전체 컴파일/린트 검증.",
+      "verificationCriteria": "npx tsc --noEmit 통과(에러 0건), npm run lint 통과. lib/dummy-data.ts가 수정 없이 그대로 컴파일됨. database.types.ts에 events/event_participants Row/Insert/Update 타입과 profiles.role이 반영됨.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 3, Task 007(데이터베이스 스키마 및 Supabase 초기 설정)의 최종 목표: Phase 2에서 더미 데이터로 완성된 UI(이벤트/참여자/프로필 임시 타입)를 실제 Supabase 스키마로 뒷받침한다. 핵심 설계 결정(사용자 승인 완료): (1) shrimp-rules.md 규칙에 따라 새 users 테이블을 만들지 않고 기존 public.profiles를 사용자 테이블로 재사용하며 role 컬럼만 추가한다. (2) events.status는 컬럼으로 저장하지 않고 조회 시점에 event_date와 now()를 비교해 파생한다(pg_cron 불필요, 항상 정확). (3) events.created_by는 profiles(id)를 on delete cascade로 참조해 호스트 계정 삭제 시 이벤트/참여자 기록도 함께 연쇄 삭제된다. (4) invite_code는 DB가 생성하지 않고 unique not null 제약만 강제하며 실제 생성은 Task 009 애플리케이션 코드 책임이다. (5) event_participants에는 참여자 강제 퇴장(호스트가 타인을 내보내는) 정책을 포함하지 않고 본인 탈퇴만 허용한다. 모든 스키마 변경은 supabase/migrations/ 파일 작성 → mcp__supabase__apply_migration → mcp__supabase__generate_typescript_types 순서로만 진행했고 database.types.ts는 손으로 수정하지 않았다. security definer 트리거 함수(handle_new_user, handle_new_event)의 execute 권한은 anon/authenticated에서 명시적으로 회수했다. 이 작업은 이미 구현·적용·검증(npx tsc --noEmit, npm run lint 통과)까지 완료된 상태이며, 이번 split_tasks는 그 완료된 작업을 shrimp task manager에 사후 기록하기 위한 것이다 — 각 서브태스크는 split_tasks 완료 후 update_task로 status=completed, summary=실제 수행 내역, completedAt으로 갱신할 예정이다.",
+      "summary": "mcp__supabase__generate_typescript_types로 lib/supabase/database.types.ts 재생성 완료(events/event_participants Row/Insert/Update, profiles.role 반영). lib/types/{event,participant,user}.ts를 DB Tables<> 타입 기반 + camelCase 매퍼(toEvent/toEventParticipant/toUserProfile)와 computeEventStatus 파생 함수로 교체. lib/dummy-data.ts는 필드 모양이 일치해 수정 없이 컴파일됨. npx tsc --noEmit, npm run lint 모두 통과 확인.",
+      "completedAt": "2026-10-23T06:45:16.358Z"
+    },
+    {
+      "id": "5af063d1-6f1b-49ed-8df0-4c2ca9b7eed1",
+      "name": "proxy.ts 관리자 role 체크 미들웨어 구현",
+      "description": "lib/supabase/proxy.ts의 updateSession()에 /admin/* 경로(단, /admin/login 제외) 전용 role 검사를 추가한다. 이미 호출 중인 supabase.auth.getClaims()의 결과(user.sub)를 재사용해 profiles 테이블에서 role 컬럼만 조회하고, role이 'admin'이 아니면 /admin/login으로 리다이렉트한다. 미인증 사용자가 /admin/*에 접근하는 경우도 동일하게 /admin/login으로 보낸다(현재는 일반 allowlist 로직에 의해 /auth/login으로 보내지는데, 관리자 영역은 /admin/login으로 보내는 것이 사용자 기대와 일치). 64행의 TODO 주석은 구현 완료 후 제거한다.",
+      "notes": "CLAUDE.md 지침: getClaims()를 getUser()로 바꾸지 말 것. 이 미들웨어는 /admin/* 경로에만 조건부로 DB 조회가 추가되므로 일반 페이지 성능에는 영향 없음.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T07:00:49.892Z",
+      "updatedAt": "2026-10-23T07:03:08.468Z",
+      "relatedFiles": [
+        {
+          "path": "lib/supabase/proxy.ts",
+          "type": "TO_MODIFY",
+          "description": "updateSession()에 /admin/* role 체크 추가, 64행 TODO 주석 제거",
+          "lineStart": 47,
+          "lineEnd": 65
+        }
+      ],
+      "implementationGuide": "pseudocode:\n```\n// 기존 allowlist 리다이렉트 블록(50~62행) 바로 다음에 추가\nconst isAdminPath = request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/login');\nif (isAdminPath) {\n  if (!user) {\n    return NextResponse.redirect(new URL('/admin/login', request.url));\n  }\n  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.sub).single();\n  if (profile?.role !== 'admin') {\n    return NextResponse.redirect(new URL('/admin/login', request.url));\n  }\n}\n```\nsupabase 변수와 user 변수는 기존 코드(18-48행)에서 이미 선언되어 있으므로 그대로 사용. select는 'role' 컬럼 1개만 지정해 미들웨어 오버헤드를 최소화한다. NextResponse.redirect에 request.url 기반 URL을 쓰는 기존 패턴(59-61행)을 그대로 따른다.",
+      "verificationCriteria": "role='user'로 로그인한 계정이 /admin/dashboard에 접근하면 /admin/login으로 리다이렉트됨. role='admin' 계정은 정상 접근됨. 비로그인 상태로 /admin/dashboard 접근 시 /admin/login으로 리다이렉트됨. /admin/login 자체는 리다이렉트 루프 없이 렌더링됨. 기존 일반 보호 라우트(/protected, /(app)/*) 리다이렉트 동작은 변경 없음.",
+      "analysisResult": "Task 008(인증 시스템 및 권한 관리)의 목표는 '처음부터 인증을 구현'하는 것이 아니라, Task 004~007에서 이미 구현된 이메일/Google OAuth 로그인·로그아웃·프로필 자동생성(components/google-login-button.tsx, app/auth/callback/route.ts, login-form.tsx/sign-up-form.tsx, handle_new_user 트리거, logout-button.tsx, lib/supabase/proxy.ts의 getClaims 기반 미인증 리다이렉트)을 재사용하면서, 코드 조사로 확인된 3가지 실제 격차만 메우는 것이다: (1) lib/supabase/proxy.ts 64행의 `TODO(Task 008)` — /admin/* 경로에 role==='admin' 체크가 전혀 없어 인증만 되면 누구나 관리자 페이지에 접근 가능한 문제, (2) profiles 테이블 RLS update 정책이 컬럼 제한 없이 `auth.uid()=id`만 검사해 일반 사용자가 자기 role을 'admin'으로 직접 올릴 수 있는 권한 상승 취약점(신규 발견, 기존 마이그레이션 어디에도 방어 로직 없음), (3) AdminSidebar가 재사용하는 LogoutButton이 항상 /auth/login으로 보내 관리자 로그아웃 후 /admin/login으로 돌아가지 못하는 UX 결함(신규 발견). 여기에 Google OAuth 프로필 매핑이 실제로 올바른지 실측 검증과, 이 모든 변경을 검증하는 Playwright MCP E2E 테스트(인증 플로우 + 권한 격리 + 권한 상승 차단)를 추가한다. 모든 작업은 Supabase 클라이언트 3분류 경계, getClaims() 우선 사용, 기존 마이그레이션 파일명/트리거 보안 패턴(security definer, search_path='')을 그대로 따른다. 트리거 설계 시 Postgres의 BEFORE UPDATE 트리거가 RLS보다 낮은 레벨에서 항상 실행된다는 사실 때문에, 향후 Task 011에서 관리자가 service_role로 다른 사용자의 role을 변경하는 기능까지 막아버리지 않도록 트리거 안에 service_role 예외 조건을 반드시 포함해야 한다.",
+      "summary": "lib/supabase/proxy.ts의 updateSession()에 /admin/* 전용 role 체크를 추가했다. 기존 getClaims() 결과(user)를 재사용해 profiles.role을 1개 컬럼만 조회하고, role!=='admin'이면 /admin/login으로 리다이렉트한다. 구현 중 기존 미인증 리다이렉트 블록(50-62행)이 /admin/dashboard 같은 경로를 /admin/login보다 먼저 /auth/login으로 가로채던 순서 버그를 발견해, 해당 블록의 예외 목록을 /admin/login에서 /admin 전체로 넓혀 모든 /admin/* 경로가 새 role 체크 블록으로 넘어가도록 고쳤다. 64행 TODO 주석은 실제 구현으로 교체되어 제거됨. tsc --noEmit, eslint 모두 통과.",
+      "completedAt": "2026-10-23T07:03:08.466Z"
+    },
+    {
+      "id": "663d49d0-66a8-4885-96d3-3bafe3abb839",
+      "name": "profiles.role 자가 상승 차단 보안 마이그레이션",
+      "description": "profiles 테이블의 'Users can update their own profile' RLS 정책이 컬럼 제한 없이 모든 필드(role 포함)를 허용해, 일반 사용자가 Supabase 클라이언트로 자기 프로필의 role을 'admin'으로 직접 바꿀 수 있는 권한 상승 취약점을 차단한다. BEFORE UPDATE 트리거를 신설해 role 변경 요청이 들어오면 OLD.role로 강제 되돌리되, service_role(관리자 백엔드가 향후 Task 011에서 사용할 RLS 우회 키)로의 요청은 예외로 허용한다.",
+      "notes": "auth.jwt()->>'role' 체크는 Supabase의 service_role JWT에 role 클레임이 'service_role'로 들어있는 Supabase 표준 동작에 기반함. security definer + search_path='' 패턴은 기존 handle_new_user/is_event_member 하드닝과 동일하게 유지해 PostgREST RPC 노출 경고를 피한다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T07:00:49.892Z",
+      "updatedAt": "2026-10-23T07:05:19.938Z",
+      "relatedFiles": [
+        {
+          "path": "supabase/migrations/20261020155024_create_profiles.sql",
+          "type": "REFERENCE",
+          "description": "현재 role 제한 없는 update 정책의 출처",
+          "lineStart": 26,
+          "lineEnd": 29
+        },
+        {
+          "path": "supabase/migrations/20261023062709_profiles_add_role.sql",
+          "type": "REFERENCE",
+          "description": "role 컬럼이 추가된 마이그레이션(이 작업이 보완하는 대상)"
+        }
+      ],
+      "implementationGuide": "새 마이그레이션 파일 supabase/migrations/<YYYYMMDDHHMMSS>_prevent_profiles_role_self_escalation.sql 작성(타임스탬프는 작성 시점 UTC 기준, 기존 파일명 규칙 준수). pseudocode:\n```sql\ncreate function public.prevent_profiles_role_self_escalation()\nreturns trigger\nlanguage plpgsql\nsecurity definer\nset search_path = ''\nas $$\nbegin\n  if (select auth.jwt() ->> 'role') = 'service_role' then\n    return new; -- 관리자 백엔드(Task 011)의 service_role 변경은 허용\n  end if;\n  if new.role is distinct from old.role then\n    new.role := old.role; -- 일반 사용자의 role 자가 변경 무시\n  end if;\n  return new;\nend;\n$$;\n\ncreate trigger before_profiles_role_update\n  before update on public.profiles\n  for each row execute function public.prevent_profiles_role_self_escalation();\n```\n작성 후 mcp__supabase__apply_migration으로 적용하고, mcp__supabase__get_advisors(type: security)로 재확인한다(074f633f 작업과 동일 패턴). database.types.ts는 테이블 컬럼 변경이 없으므로 재생성하지 않는다.",
+      "verificationCriteria": "일반 사용자 세션으로 `update profiles set role='admin' where id=auth.uid()`를 실행해도 profiles.role이 변경되지 않음(SQL로 재조회해 확인). service_role 키로 동일 update를 실행하면 정상적으로 role이 변경됨. mcp__supabase__get_advisors 보안 경고에 신규 이슈가 없음. 기존 프로필 이름/아바타 수정 기능(components/profile/profile-name-editor.tsx 등)은 영향 없이 정상 동작.",
+      "analysisResult": "Task 008(인증 시스템 및 권한 관리)의 목표는 '처음부터 인증을 구현'하는 것이 아니라, Task 004~007에서 이미 구현된 이메일/Google OAuth 로그인·로그아웃·프로필 자동생성(components/google-login-button.tsx, app/auth/callback/route.ts, login-form.tsx/sign-up-form.tsx, handle_new_user 트리거, logout-button.tsx, lib/supabase/proxy.ts의 getClaims 기반 미인증 리다이렉트)을 재사용하면서, 코드 조사로 확인된 3가지 실제 격차만 메우는 것이다: (1) lib/supabase/proxy.ts 64행의 `TODO(Task 008)` — /admin/* 경로에 role==='admin' 체크가 전혀 없어 인증만 되면 누구나 관리자 페이지에 접근 가능한 문제, (2) profiles 테이블 RLS update 정책이 컬럼 제한 없이 `auth.uid()=id`만 검사해 일반 사용자가 자기 role을 'admin'으로 직접 올릴 수 있는 권한 상승 취약점(신규 발견, 기존 마이그레이션 어디에도 방어 로직 없음), (3) AdminSidebar가 재사용하는 LogoutButton이 항상 /auth/login으로 보내 관리자 로그아웃 후 /admin/login으로 돌아가지 못하는 UX 결함(신규 발견). 여기에 Google OAuth 프로필 매핑이 실제로 올바른지 실측 검증과, 이 모든 변경을 검증하는 Playwright MCP E2E 테스트(인증 플로우 + 권한 격리 + 권한 상승 차단)를 추가한다. 모든 작업은 Supabase 클라이언트 3분류 경계, getClaims() 우선 사용, 기존 마이그레이션 파일명/트리거 보안 패턴(security definer, search_path='')을 그대로 따른다. 트리거 설계 시 Postgres의 BEFORE UPDATE 트리거가 RLS보다 낮은 레벨에서 항상 실행된다는 사실 때문에, 향후 Task 011에서 관리자가 service_role로 다른 사용자의 role을 변경하는 기능까지 막아버리지 않도록 트리거 안에 service_role 예외 조건을 반드시 포함해야 한다.",
+      "summary": "supabase/migrations에 두 개 마이그레이션을 추가/적용했다: (1) 20261023070512_prevent_profiles_role_self_escalation.sql — BEFORE UPDATE 트리거로 auth.jwt()->>'role'이 'service_role'이 아닌 모든 요청에서 new.role을 old.role로 강제 복원, (2) 20261023070548_restrict_prevent_role_escalation_execute.sql — get_advisors가 신규 함수를 anon/authenticated가 PostgREST RPC로 직접 호출 가능하다고 경고해 handle_new_user와 동일한 패턴으로 execute 권한을 revoke. 트랜잭션+ROLLBACK으로 실제 admin 계정(whfkddk@gmail.com)을 건드리지 않고 두 경로를 직접 시뮬레이션해 기능 검증: authenticated role로 request.jwt.claims를 sub=본인으로 설정하고 role='user' 시도 → role이 'admin'으로 유지됨(차단 확인). service_role로 request.jwt.claims role='service_role' 설정 후 동일 시도 → role이 'user'로 정상 변경됨(관리자 백엔드 경로 허용 확인). get_advisors(security) 재확인 결과 신규 경고 없음(기존에 있던 무관한 leaked_password_protection 경고만 남음).",
+      "completedAt": "2026-10-23T07:05:19.935Z"
+    },
+    {
+      "id": "5248f5eb-b85b-4be2-b4ed-6139e92fdcf5",
+      "name": "관리자 로그아웃 리다이렉트 경로 수정",
+      "description": "components/logout-button.tsx가 항상 /auth/login으로 리다이렉트해, components/layout/admin-sidebar.tsx(관리자 사이드바)에서 로그아웃해도 일반 사용자 로그인 화면으로 가버리는 문제를 고친다. LogoutButton에 선택적 redirectTo prop(기본값 '/auth/login')을 추가하고 admin-sidebar.tsx에서 '/admin/login'을 넘긴다.",
+      "notes": "google-login-button.tsx의 next prop 네이밍과 다르게 redirectTo를 쓰는 이유: LogoutButton은 쿼리파라미터가 아니라 signOut 이후 즉시 라우팅할 경로이므로 router.push 인자에 가까운 이름을 사용.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T07:00:49.892Z",
+      "updatedAt": "2026-10-23T07:05:48.889Z",
+      "relatedFiles": [
+        {
+          "path": "components/logout-button.tsx",
+          "type": "TO_MODIFY",
+          "description": "redirectTo prop 추가"
+        },
+        {
+          "path": "components/layout/admin-sidebar.tsx",
+          "type": "TO_MODIFY",
+          "description": "LogoutButton에 redirectTo=\"/admin/login\" 전달",
+          "lineStart": 43,
+          "lineEnd": 45
+        },
+        {
+          "path": "components/auth-button.tsx",
+          "type": "REFERENCE",
+          "description": "prop 생략 시 기존 동작(/auth/login) 유지를 확인할 기존 호출부"
+        }
+      ],
+      "implementationGuide": "pseudocode:\n```tsx\n// components/logout-button.tsx\nexport function LogoutButton({ redirectTo = \"/auth/login\" }: { redirectTo?: string } = {}) {\n  ...\n  const logout = async () => {\n    await supabase.auth.signOut();\n    router.push(redirectTo);\n  };\n  ...\n}\n\n// components/layout/admin-sidebar.tsx (44행)\n<LogoutButton redirectTo=\"/admin/login\" />\n```\ncomponents/auth-button.tsx 등 기존 호출부는 prop을 넘기지 않으므로 동작 불변.",
+      "verificationCriteria": "/admin/dashboard에서 로그아웃하면 /admin/login으로 이동. /protected 또는 /(app)/profile에서 로그아웃하면 기존과 동일하게 /auth/login으로 이동(회귀 없음).",
+      "analysisResult": "Task 008(인증 시스템 및 권한 관리)의 목표는 '처음부터 인증을 구현'하는 것이 아니라, Task 004~007에서 이미 구현된 이메일/Google OAuth 로그인·로그아웃·프로필 자동생성(components/google-login-button.tsx, app/auth/callback/route.ts, login-form.tsx/sign-up-form.tsx, handle_new_user 트리거, logout-button.tsx, lib/supabase/proxy.ts의 getClaims 기반 미인증 리다이렉트)을 재사용하면서, 코드 조사로 확인된 3가지 실제 격차만 메우는 것이다: (1) lib/supabase/proxy.ts 64행의 `TODO(Task 008)` — /admin/* 경로에 role==='admin' 체크가 전혀 없어 인증만 되면 누구나 관리자 페이지에 접근 가능한 문제, (2) profiles 테이블 RLS update 정책이 컬럼 제한 없이 `auth.uid()=id`만 검사해 일반 사용자가 자기 role을 'admin'으로 직접 올릴 수 있는 권한 상승 취약점(신규 발견, 기존 마이그레이션 어디에도 방어 로직 없음), (3) AdminSidebar가 재사용하는 LogoutButton이 항상 /auth/login으로 보내 관리자 로그아웃 후 /admin/login으로 돌아가지 못하는 UX 결함(신규 발견). 여기에 Google OAuth 프로필 매핑이 실제로 올바른지 실측 검증과, 이 모든 변경을 검증하는 Playwright MCP E2E 테스트(인증 플로우 + 권한 격리 + 권한 상승 차단)를 추가한다. 모든 작업은 Supabase 클라이언트 3분류 경계, getClaims() 우선 사용, 기존 마이그레이션 파일명/트리거 보안 패턴(security definer, search_path='')을 그대로 따른다. 트리거 설계 시 Postgres의 BEFORE UPDATE 트리거가 RLS보다 낮은 레벨에서 항상 실행된다는 사실 때문에, 향후 Task 011에서 관리자가 service_role로 다른 사용자의 role을 변경하는 기능까지 막아버리지 않도록 트리거 안에 service_role 예외 조건을 반드시 포함해야 한다.",
+      "summary": "components/logout-button.tsx에 선택적 redirectTo prop(기본값 \"/auth/login\")을 추가하고 signOut 후 router.push(redirectTo)로 교체했다. components/layout/admin-sidebar.tsx에서 <LogoutButton redirectTo=\"/admin/login\" />으로 호출해 관리자 영역 로그아웃이 /admin/login으로 돌아가도록 수정. components/auth-button.tsx 등 기존 호출부는 prop을 넘기지 않아 기본값으로 기존 동작(/auth/login)이 유지됨. tsc --noEmit, eslint 모두 통과.",
+      "completedAt": "2026-10-23T07:05:48.886Z"
+    },
+    {
+      "id": "4cc8f8df-9cea-4875-93cd-b21cf55fd51e",
+      "name": "Google OAuth 프로필 데이터 검증 및 인증/권한 Playwright MCP E2E 테스트",
+      "description": "세 가지 선행 작업(관리자 role 미들웨어, role 자가 상승 차단, 관리자 로그아웃 경로)이 모두 반영된 상태에서, 실제 Google 로그인 1회를 수행해 handle_new_user 트리거가 Google의 raw_user_meta_data(full_name/avatar_url)를 올바르게 profiles 행에 매핑하는지 mcp__supabase__execute_sql로 auth.users와 profiles를 비교 검증한다. 이어서 Playwright MCP로 이메일/비밀번호 기반 인증 플로우와 관리자 권한 격리, role 자가 상승 차단을 E2E 테스트한다.",
+      "notes": "Google OAuth 동의 화면 자체는 Playwright로 완전 자동화하기 어려우므로, '동의 화면으로의 리다이렉트 URL 발생'까지만 자동 검증하고 실제 로그인 완료는 1회 수동으로 수행한다. 이 작업은 코드 변경이 없는 검증/테스트 작업이지만 ROADMAP의 'API/비즈니스 로직 작업 시 테스트 체크리스트 필수' 규칙에 따라 아래 테스트 체크리스트를 산출물로 포함한다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "5af063d1-6f1b-49ed-8df0-4c2ca9b7eed1"
+        },
+        {
+          "taskId": "663d49d0-66a8-4885-96d3-3bafe3abb839"
+        },
+        {
+          "taskId": "5248f5eb-b85b-4be2-b4ed-6139e92fdcf5"
+        }
+      ],
+      "createdAt": "2026-10-23T07:00:49.892Z",
+      "updatedAt": "2026-10-23T07:20:01.006Z",
+      "relatedFiles": [
+        {
+          "path": "lib/supabase/proxy.ts",
+          "type": "REFERENCE",
+          "description": "테스트 대상 미들웨어"
+        },
+        {
+          "path": "app/auth/callback/route.ts",
+          "type": "REFERENCE",
+          "description": "OAuth 콜백 처리 확인용"
+        },
+        {
+          "path": "supabase/migrations/20261020155024_create_profiles.sql",
+          "type": "REFERENCE",
+          "description": "handle_new_user 매핑 로직 확인용"
+        }
+      ],
+      "implementationGuide": "검증 단계:\n1. 브라우저로 /auth/login에서 Google로 로그인 1회 수행(수동 동의 1회 필요할 수 있음).\n2. mcp__supabase__execute_sql로 `select id, raw_user_meta_data from auth.users where email = '<test-google-email>'`와 `select id, full_name, avatar_url, role from public.profiles where id = '<same-id>'` 비교해 매핑이 올바른지 확인.\n3. Playwright MCP 테스트 시나리오는 아래 체크리스트대로 진행하고, 각 단계 결과를 기록.",
+      "verificationCriteria": "## 테스트 체크리스트\n- [ ] Google 로그인으로 생성된 profiles 행의 full_name/avatar_url이 auth.users.raw_user_meta_data와 일치\n- [ ] 이메일/비밀번호 회원가입 → 로그인 → /(app)/profile에서 프로필 자동 생성 데이터 표시 확인\n- [ ] 비인증 상태로 /protected 접근 시 /auth/login 리다이렉트\n- [ ] 비인증 상태로 /admin/dashboard 접근 시 /admin/login 리다이렉트\n- [ ] role='user'로 시딩된 계정 로그인 후 /admin/dashboard 접근 시 /admin/login 리다이렉트(권한 거부)\n- [ ] mcp__supabase__execute_sql로 테스트 계정 role을 'admin'으로 시딩 후 동일 계정 로그인 시 /admin/dashboard 정상 접근\n- [ ] 로그인 상태에서 브라우저 콘솔로 profiles.role 자가 변경 시도 → SQL 재조회로 role 불변 확인\n- [ ] 로그아웃 후 /protected, /admin/dashboard 재접근 시 각각 /auth/login, /admin/login으로 리다이렉트\n- [ ] 관리자 사이드바에서 로그아웃 시 /admin/login으로 이동 확인\n- [ ] 에러 케이스: 잘못된 비밀번호 로그인 시 에러 메시지 표시",
+      "analysisResult": "Task 008(인증 시스템 및 권한 관리)의 목표는 '처음부터 인증을 구현'하는 것이 아니라, Task 004~007에서 이미 구현된 이메일/Google OAuth 로그인·로그아웃·프로필 자동생성(components/google-login-button.tsx, app/auth/callback/route.ts, login-form.tsx/sign-up-form.tsx, handle_new_user 트리거, logout-button.tsx, lib/supabase/proxy.ts의 getClaims 기반 미인증 리다이렉트)을 재사용하면서, 코드 조사로 확인된 3가지 실제 격차만 메우는 것이다: (1) lib/supabase/proxy.ts 64행의 `TODO(Task 008)` — /admin/* 경로에 role==='admin' 체크가 전혀 없어 인증만 되면 누구나 관리자 페이지에 접근 가능한 문제, (2) profiles 테이블 RLS update 정책이 컬럼 제한 없이 `auth.uid()=id`만 검사해 일반 사용자가 자기 role을 'admin'으로 직접 올릴 수 있는 권한 상승 취약점(신규 발견, 기존 마이그레이션 어디에도 방어 로직 없음), (3) AdminSidebar가 재사용하는 LogoutButton이 항상 /auth/login으로 보내 관리자 로그아웃 후 /admin/login으로 돌아가지 못하는 UX 결함(신규 발견). 여기에 Google OAuth 프로필 매핑이 실제로 올바른지 실측 검증과, 이 모든 변경을 검증하는 Playwright MCP E2E 테스트(인증 플로우 + 권한 격리 + 권한 상승 차단)를 추가한다. 모든 작업은 Supabase 클라이언트 3분류 경계, getClaims() 우선 사용, 기존 마이그레이션 파일명/트리거 보안 패턴(security definer, search_path='')을 그대로 따른다. 트리거 설계 시 Postgres의 BEFORE UPDATE 트리거가 RLS보다 낮은 레벨에서 항상 실행된다는 사실 때문에, 향후 Task 011에서 관리자가 service_role로 다른 사용자의 role을 변경하는 기능까지 막아버리지 않도록 트리거 안에 service_role 예외 조건을 반드시 포함해야 한다.",
+      "summary": "Playwright MCP로 실행한 체크리스트 결과: (1) 이메일/비밀번호 회원가입(whfkddk+e2e008@gmail.com, 테스트 후 삭제) → profiles 자동 생성(role='user' 기본값) 확인. (2) 로그인 → /profile에서 이메일/가입일 정상 표시. (3) 비인증 /protected, /admin/dashboard 접근 시 각각 /auth/login, /admin/login 리다이렉트 확인. (4) role='user' 계정의 /admin/dashboard 접근 거부(→/admin/login), service_role 시뮬레이션으로 role='admin' 시딩 후 정상 접근 확인. (5) 로그인 상태에서 실제 Supabase REST API(PATCH /rest/v1/profiles, 사용자 자신의 access_token)로 role self-escalation 시도 → 응답 200이지만 return=representation 바디에 role이 요청값(admin)이 아닌 기존값(user)으로 와서 트리거가 실제 공격 경로를 막는 것을 서버 응답 자체로 증명, SQL 재조회로도 재확인. (6) 로그아웃 후 /protected, /admin/dashboard 재접근 시 리다이렉트 재확인, 관리자 사이드바 로그아웃은 /admin/login으로 이동 확인. (7) 잘못된 비밀번호 로그인 시 'Invalid login credentials' 에러 표시 확인. (8) Google OAuth: 브라우저에 이미 로그인된 실제 Google 세션으로 '계속하기' 클릭 시 실제 전체 OAuth 플로우(authorize→accounts.google.com→Supabase callback)가 완주되어 실제 Google 계정(whfkddk@gmail.com, 기존 admin 프로필)으로 로그인됨. 이 과정에서 raw_user_meta_data와 profiles.full_name/avatar_url을 비교해 **예상 밖의 실제 버그를 발견**: handle_new_user는 auth.users INSERT에만 반응하므로, 이메일 가입 후 나중에 Google 계정을 연동(동일 row UPDATE)하면 profiles.full_name/avatar_url이 영원히 null로 남는 문제가 실재했음(실제 운영 계정에서 재현 확인). 원래 계획된 4개 작업 범위를 벗어나지만 Task 008의 '프로필 자동 생성 로직' 요구사항에 직접 해당하는 결함이라 판단해, fill-if-null 방식의 AFTER UPDATE OF raw_user_meta_data 트리거(sync_profile_from_auth_user, 마이그레이션 20261023071500)를 추가로 구현하고 실제 계정에서 수정 확인(이름 '김동원', 아바타 정상 표시, role='admin' 불변). mcp__supabase__get_advisors 보안 재확인 결과 신규 경고 없음. 테스트 중 생성한 임시 계정은 삭제해 운영 데이터에 흔적을 남기지 않음.",
+      "completedAt": "2026-10-23T07:20:01.003Z"
     }
   ]
 }
