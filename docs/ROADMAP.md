@@ -3,7 +3,7 @@
 일회성 이벤트를 간편하게 관리하는 올인원 플랫폼 - 초대 링크 하나로 모든 것을 해결
 
 **📅 최종 업데이트**: 2026-10-23
-**📊 진행 상황**: Phase 2 진행 중 (5/15 Tasks 완료)
+**📊 진행 상황**: Phase 2 완료, Phase 3 진행 중 (10/15 Tasks 완료)
 
 ## 개요
 
@@ -56,7 +56,7 @@ Gather는 5-30명 규모의 소규모 이벤트 주최자와 참여자를 위한
   - ✅ 전역 상태 관리 타입 정의
   - ✅ UI 컴포넌트용 임시 데이터 모델 타입 정의 (추후 DB 스키마로 교체 예정)
 
-### Phase 2: UI/UX 완성 (더미 데이터 활용)
+### Phase 2: UI/UX 완성 (더미 데이터 활용) ✅
 
 - **Task 003: 공통 컴포넌트 라이브러리 구현** ✅ - 완료
   - ✅ shadcn/ui 추가 컴포넌트 설치 (Card, Avatar, Dialog, Toast, Form, Select — Toast는 Sonner로 대체 설치)
@@ -98,48 +98,48 @@ Gather는 5-30명 규모의 소규모 이벤트 주최자와 참여자를 위한
   - **주요 차이점**: 읽기 전용 뷰, 초대 링크로만 참여 가능
   - **의존성**: Task 004 (공통 컴포넌트 재사용)
 
-- **Task 006: 관리자 데스크톱 페이지 UI 완성**
-  - 관리자 로그인 페이지 UI 구현
-  - 관리자 대시보드 메인 페이지 UI 구현 (F012)
-  - 이벤트 관리 테이블 페이지 UI 구현 (F013)
-  - 사용자 관리 테이블 페이지 UI 구현 (F014)
-  - 통계 분석 페이지 UI 구현 (F015)
-  - Recharts 라이브러리 설치 및 더미 차트 구현
+- **Task 006: 관리자 데스크톱 페이지 UI 완성** ✅ - 완료
+  - ✅ 관리자 로그인 페이지 UI 구현 (실제 OAuth/role 체크는 Task 008)
+  - ✅ 관리자 대시보드 메인 페이지 UI 구현 (F012)
+  - ✅ 이벤트 관리 테이블 페이지 UI 구현 (F013)
+  - ✅ 사용자 관리 테이블 페이지 UI 구현 (F014)
+  - ✅ 통계 분석 페이지 UI 구현 (F015)
+  - ✅ Recharts 라이브러리 설치 및 더미 차트 구현 (PRD의 2.x 대신 3.10.1 설치)
 
 ### Phase 3: 데이터베이스 설정 및 핵심 기능 구현
 
-- **Task 007: 데이터베이스 스키마 및 Supabase 초기 설정**
-  - UI 검토 후 최종 확정된 요구사항을 반영한 스키마 설계
-  - Supabase 데이터베이스 테이블 생성 (users, events, event_participants)
-  - Row Level Security (RLS) 정책 설정
-  - 인덱스 생성 (invite_code, created_by, event_id, user_id)
-  - Supabase Storage 버킷 생성 (event-covers)
-  - Realtime 구독 설정 준비
-  - UI에서 사용 중인 임시 타입을 실제 DB 스키마 타입으로 교체
+- **Task 007: 데이터베이스 스키마 및 Supabase 초기 설정** ✅ - 완료
+  - ✅ UI 검토 후 최종 확정된 요구사항을 반영한 스키마 설계
+  - ✅ Supabase 데이터베이스 테이블 생성 (PRD의 users는 기존 profiles 테이블에 role 컬럼을 추가해 대체 — shrimp-rules.md 규칙에 따라 새 users 테이블은 만들지 않음, events·event_participants 신규 생성)
+  - ✅ Row Level Security (RLS) 정책 설정
+  - ✅ 인덱스 생성 (invite_code는 unique 제약으로 자동 인덱싱, created_by, event_id, user_id)
+  - ✅ Supabase Storage 버킷 생성 (event-covers)
+  - ✅ Realtime 구독 설정 준비 (event_participants를 supabase_realtime publication에 등록)
+  - ✅ UI에서 사용 중인 임시 타입을 실제 DB 스키마 타입으로 교체
 
-- **Task 008: 인증 시스템 및 권한 관리**
-  - Google OAuth 로그인 플로우 완성 (F010)
-  - 사용자 프로필 자동 생성 로직 구현
-  - 관리자 권한 체크 미들웨어 구현 (role: admin)
-  - 보호된 라우트 접근 제어 구현
-  - 로그아웃 기능 구현
-  - Playwright MCP를 활용한 인증 플로우 E2E 테스트
+- **Task 008: 인증 시스템 및 권한 관리** ✅ - 완료
+  - ✅ Google OAuth 로그인 플로우 완성 (F010) — Task 004~007에서 선행 구현된 코드를 실제 Google 계정으로 1회 완주 검증
+  - ✅ 사용자 프로필 자동 생성 로직 구현 — handle_new_user는 기존 구현 재사용, Google 계정 연동 시 raw_user_meta_data가 UPDATE로만 반영되어 profiles.full_name/avatar_url이 영원히 null로 남는 버그를 발견해 sync_profile_from_auth_user 트리거(fill-if-null) 추가
+  - ✅ 관리자 권한 체크 미들웨어 구현 (role: admin) — lib/supabase/proxy.ts에 /admin/* role 체크 추가, 기존 allowlist 순서 버그(미인증 /admin/*가 /admin/login 대신 /auth/login으로 가로채짐)도 함께 수정
+  - ✅ 보호된 라우트 접근 제어 구현 — 기존 getClaims 기반 리다이렉트 재검증 + profiles.role 자가 상승(self-escalation) RLS 취약점을 BEFORE UPDATE 트리거로 차단(마이그레이션 2건)
+  - ✅ 로그아웃 기능 구현 — LogoutButton에 redirectTo prop 추가, 관리자 사이드바 로그아웃이 /admin/login으로 복귀하도록 수정
+  - ✅ Playwright MCP를 활용한 인증 플로우 E2E 테스트 — 회원가입/로그인/로그아웃/에러 케이스/권한 거부/권한 상승 차단(실제 REST API 공격 시뮬레이션)/Google OAuth 전체 플로우 검증 완료
 
-- **Task 009: 이벤트 CRUD 및 초대 시스템**
-  - 이벤트 생성 API 구현 (F001)
-  - 초대 코드 자동 생성 로직 구현 (F002)
-  - 이벤트 수정/삭제 API 구현 (F006)
-  - 커버 이미지 업로드 기능 구현 (F009)
-  - 초대 링크 공유 기능 구현 (카카오톡, 클립보드) (F003)
-  - 이벤트 상태 자동 관리 로직 구현 (F008)
-  - Playwright MCP를 활용한 이벤트 생성/수정/삭제 테스트
+- **Task 009: 이벤트 CRUD 및 초대 시스템** ✅ - 완료
+  - ✅ 이벤트 생성 API 구현 (F001)
+  - ✅ 초대 코드 자동 생성 로직 구현 (F002)
+  - ✅ 이벤트 수정/삭제 API 구현 (F006)
+  - ✅ 커버 이미지 업로드 기능 구현 (F009)
+  - ✅ 초대 링크 공유 기능 구현 — 클립보드 복사만 (F003). 카카오톡 공유는 사용자 요청에 따라 보류, JS 앱 키 확보 후 별도 작업으로 진행 예정(버튼은 기존처럼 비활성 상태 유지)
+  - ✅ 이벤트 상태 자동 관리 로직 구현 (F008) — Task 007에서 만든 `computeEventStatus`/`toEvent`를 실제 쿼리 결과에 적용해 확인
+  - ✅ Playwright MCP를 활용한 이벤트 생성/수정/삭제 테스트 — 생성(커버 이미지 포함/제외)/수정(이미지 교체·제거)/삭제, 비소유자 접근 차단(UI + REST 레벨 RLS), 초대 링크 미리보기까지 실제 Supabase 프로젝트에 대해 검증
 
-- **Task 010: 참여자 관리**
-  - 초대 링크 참여 로직 구현 (F004)
-  - 중복 참여 방지 로직 구현
-  - 실시간 참여자 수 카운트 업데이트
-  - 내가 참여한/만든 이벤트 목록 조회 구현 (F007)
-  - Playwright MCP를 활용한 실시간 참여자 업데이트 테스트
+- **Task 010: 참여자 관리** ✅ - 완료
+  - ✅ 초대 링크 참여 로직 구현 (F004) — JoinConfirmButton이 event_participants에 직접 insert, 이미 로그인된 사용자의 userId를 서버에서 props로 전달
+  - ✅ 중복 참여 방지 로직 구현 — 참여 페이지에서 isEventParticipant로 사전 체크(이미 참여 중이면 버튼 대신 안내 문구), DB unique(event_id, user_id) 제약 위반(23505)도 방어적으로 처리
+  - ✅ 실시간 참여자 수 카운트 업데이트 — 이벤트 상세 페이지에 LiveParticipantList(Supabase Realtime postgres_changes) 적용. 테스트 중 DELETE 이벤트가 전달되지 않는 문제를 발견해 event_participants를 REPLICA IDENTITY FULL로 전환하는 마이그레이션 추가(INSERT/DELETE 모두 실시간 반영 확인)
+  - ✅ 내가 참여한/만든 이벤트 목록 조회 구현 (F007) — getMyEvents로 event_participants 기준 실제 데이터 조회, /events 페이지를 "내가 만든 이벤트"/"참여한 이벤트" 2개 섹션으로 재구성. 기존 Phase 2 데모 역할 토글(lib/demo-role.ts 등)은 실제 데이터로 대체되어 제거
+  - ✅ Playwright MCP를 활용한 실시간 참여자 업데이트 테스트 — 실제 Supabase 프로젝트에 대해 신규 참여/중복 참여 차단(호스트 자기 자신 포함)/실시간 INSERT·DELETE 반영/만든·참여한 목록 분리/상태 필터/초대 코드 404/미로그인 접근까지 검증
 
 - **Task 011: 관리자 대시보드 백엔드 구현**
   - 대시보드 지표 집계 쿼리 구현 (F012)
@@ -238,7 +238,7 @@ Gather는 5-30명 규모의 소규모 이벤트 주최자와 참여자를 위한
 
 - [x] React Hook Form 7.x (Task 004에서 설치)
 - [x] Zod (Task 004에서 설치)
-- [ ] Recharts 2.x (Task 006에서 설치)
+- [x] Recharts (Task 006에서 설치 — PRD에 명시된 2.x 대신 최신 3.x(3.10.1) 설치)
 
 ## 품질 체크리스트
 
@@ -251,21 +251,21 @@ Gather는 5-30명 규모의 소규모 이벤트 주최자와 참여자를 위한
 - [x] 프론트엔드 타입 정의 파일 구조 완성
 - [x] 임시 데이터 모델 타입 정의 완료
 
-#### Phase 2 (UI/UX 완성)
+#### Phase 2 (UI/UX 완성) ✅
 
-- [ ] 모든 페이지 UI가 더미 데이터로 완성
-- [ ] 주최자와 참여자의 서로 다른 UX 플로우 동작 확인
-- [ ] 권한에 따른 UI 조건부 렌더링 확인
-- [ ] 반응형 디자인 적용 완료
-- [ ] 다크 모드 지원 완료
-- [ ] 사용자 플로우 네비게이션 동작
+- [x] 모든 페이지 UI가 더미 데이터로 완성
+- [x] 주최자와 참여자의 서로 다른 UX 플로우 동작 확인
+- [x] 권한에 따른 UI 조건부 렌더링 확인
+- [x] 반응형 디자인 적용 완료
+- [x] 다크 모드 지원 완료
+- [x] 사용자 플로우 네비게이션 동작
 
 #### Phase 3 (데이터베이스 설정 및 핵심 기능)
 
-- [ ] 데이터베이스 스키마 생성 및 RLS 설정
+- [x] 데이터베이스 스키마 생성 및 RLS 설정
 - [ ] 모든 API 엔드포인트 구현 완료
 - [ ] 실시간 기능 정상 동작
-- [ ] 인증 및 권한 시스템 동작
+- [x] 인증 및 권한 시스템 동작
 - [ ] Playwright MCP 테스트 모두 통과
 
 #### Phase 4 (최적화)
