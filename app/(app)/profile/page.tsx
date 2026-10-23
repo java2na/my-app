@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogoutButton } from "@/components/logout-button";
+import { ProfileAvatarEditor } from "@/components/profile/profile-avatar-editor";
 import { ProfileNameEditor } from "@/components/profile/profile-name-editor";
 import { createClient } from "@/lib/supabase/server";
 
@@ -58,21 +58,33 @@ async function ProfileContent() {
     day: "numeric",
   });
 
+  const [{ count: createdEventCount }, { count: joinedEventCount }] =
+    await Promise.all([
+      supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("created_by", userId),
+      supabase
+        .from("event_participants")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("role", "participant"),
+    ]);
+
   return (
     <div className="flex flex-col gap-6 p-4">
       <div className="flex flex-col items-center gap-3 py-4">
-        <Avatar size="lg">
-          {profile.avatar_url && (
-            <AvatarImage
-              src={profile.avatar_url}
-              alt={profile.full_name ?? ""}
-            />
-          )}
-          <AvatarFallback>
-            {(profile.full_name ?? profile.email).charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <ProfileNameEditor initialName={profile.full_name ?? ""} />
+        <ProfileAvatarEditor
+          userId={userId}
+          initialAvatarUrl={profile.avatar_url}
+          fallbackText={(profile.full_name ?? profile.email)
+            .charAt(0)
+            .toUpperCase()}
+        />
+        <ProfileNameEditor
+          userId={userId}
+          initialName={profile.full_name ?? ""}
+        />
       </div>
 
       <div className="flex flex-col gap-4 rounded-lg border p-4">
@@ -83,6 +95,20 @@ async function ProfileContent() {
         <div className="flex flex-col gap-1">
           <span className="text-muted-foreground text-xs">가입일</span>
           <span className="text-sm">{joinedAt}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4 border-t pt-4">
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-2xl font-semibold">
+              {createdEventCount ?? 0}
+            </span>
+            <span className="text-muted-foreground text-xs">만든 이벤트</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-2xl font-semibold">
+              {joinedEventCount ?? 0}
+            </span>
+            <span className="text-muted-foreground text-xs">참여한 이벤트</span>
+          </div>
         </div>
       </div>
 

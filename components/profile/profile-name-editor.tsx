@@ -1,17 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { createClient } from "@/lib/supabase/client";
 
-export function ProfileNameEditor({ initialName }: { initialName: string }) {
+export function ProfileNameEditor({
+  userId,
+  initialName,
+}: {
+  userId: string;
+  initialName: string;
+}) {
   const [name, setName] = useState(initialName);
+  const [isSaving, setIsSaving] = useState(false);
+  const router = useRouter();
 
-  function handleSave() {
-    // TODO(Task 011): 실제 profiles 테이블 업데이트 API 연동
-    toast("저장은 추후 지원됩니다");
+  async function handleSave() {
+    setIsSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ full_name: name.trim() || null })
+      .eq("id", userId);
+    setIsSaving(false);
+
+    if (error) {
+      toast.error("이름을 저장하지 못했습니다");
+      return;
+    }
+
+    toast.success("이름이 저장되었습니다");
+    router.refresh();
   }
 
   return (
@@ -23,7 +46,12 @@ export function ProfileNameEditor({ initialName }: { initialName: string }) {
         placeholder="이름을 입력하세요"
         className="text-center"
       />
-      <Button type="button" variant="outline" onClick={handleSave}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleSave}
+        disabled={isSaving}
+      >
         저장
       </Button>
     </div>
