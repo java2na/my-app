@@ -2,6 +2,12 @@
 // Supabase 클라이언트를 호출하지 않는 순수 함수만 둔다.
 // DUMMY_EVENTS 등 고정 데이터셋은 모듈 스코프에서 1회만 생성되며 서버 재시작 시 초기화된다.
 
+import type {
+  AdminDashboardMetrics,
+  AdminEventRow,
+  AdminUserRow,
+  ChartPoint,
+} from "@/lib/types/components";
 import type { Event, EventStatus } from "@/lib/types/event";
 import type {
   EventParticipant,
@@ -78,11 +84,38 @@ export function createDummyProfile(
   };
 }
 
+function randomPastDate(maxDaysAgo: number): Date {
+  const daysAgo = Math.floor(Math.random() * (maxDaysAgo + 1));
+  return new Date(Date.now() - daysAgo * DAY_MS);
+}
+
+export function createDummyUser(overrides?: Partial<UserProfile>): UserProfile {
+  const name = pickRandom(SAMPLE_NAMES);
+  return {
+    id: crypto.randomUUID(),
+    email: `${name.toLowerCase()}.${crypto.randomUUID().slice(0, 6)}@example.com`,
+    name,
+    avatarUrl: null,
+    role: Math.random() < 0.1 ? "admin" : "user",
+    createdAt: toISODate(randomPastDate(90)),
+    ...overrides,
+  };
+}
+
+export function createDummyUsers(count: number): UserProfile[] {
+  const users = Array.from({ length: count }, () => createDummyUser());
+  return users.some((user) => user.role === "admin")
+    ? users
+    : [{ ...users[0], role: "admin" }, ...users.slice(1)];
+}
+
+export const DUMMY_USERS: UserProfile[] = createDummyUsers(12);
+
 export function createDummyEvent(overrides?: Partial<Event>): Event {
   const status = overrides?.status ?? randomStatus();
   const eventDate =
     overrides?.eventDate ?? toISODate(eventDateForStatus(status));
-  const now = toISODate(new Date());
+  const createdAt = overrides?.createdAt ?? toISODate(randomPastDate(60));
 
   return {
     id: crypto.randomUUID(),
@@ -93,9 +126,9 @@ export function createDummyEvent(overrides?: Partial<Event>): Event {
     coverImageUrl: null,
     inviteCode: crypto.randomUUID().slice(0, 8),
     status,
-    createdBy: crypto.randomUUID(),
-    createdAt: now,
-    updatedAt: now,
+    createdBy: pickRandom(DUMMY_USERS).id,
+    createdAt,
+    updatedAt: createdAt,
     ...overrides,
   };
 }
@@ -111,7 +144,7 @@ export function createDummyParticipant(
   return {
     id: crypto.randomUUID(),
     eventId,
-    userId: crypto.randomUUID(),
+    userId: pickRandom(DUMMY_USERS).id,
     role: "participant",
     joinedAt: toISODate(new Date()),
     ...overrides,
@@ -143,7 +176,9 @@ const DUMMY_PARTICIPANTS_BY_EVENT = new Map<
       event.id,
       participants.map((participant) => ({
         participant,
-        profile: createDummyProfile({ id: participant.userId }),
+        profile:
+          DUMMY_USERS.find((user) => user.id === participant.userId) ??
+          createDummyProfile({ id: participant.userId }),
       })),
     ];
   }),
@@ -159,4 +194,85 @@ export function getDummyEventByInviteCode(code: string): Event | undefined {
 
 export function getDummyParticipantsWithProfiles(eventId: string) {
   return DUMMY_PARTICIPANTS_BY_EVENT.get(eventId) ?? [];
+}
+
+function isWithinDays(isoDate: string, days: number): boolean {
+  return Date.now() - new Date(isoDate).getTime() <= days * DAY_MS;
+}
+
+function isSameUTCDate(isoDate: string, date: Date): boolean {
+  const target = new Date(isoDate);
+  return (
+    target.getUTCFullYear() === date.getUTCFullYear() &&
+    target.getUTCMonth() === date.getUTCMonth() &&
+    target.getUTCDate() === date.getUTCDate()
+  );
+}
+
+export function getAdminEventRows(): AdminEventRow[] {
+  return DUMMY_EVENTS.map((event) => ({
+    event,
+    hostName:
+      DUMMY_USERS.find((user) => user.id === event.createdBy)?.name ??
+      "알 수 없음",
+    participantCount: getDummyParticipantsWithProfiles(event.id).length,
+  }));
+}
+
+export function getAdminUserRows(): AdminUserRow[] {
+  return DUMMY_USERS.map((user) => ({
+    user,
+    createdEventCount: DUMMY_EVENTS.filter(
+      (event) => event.createdBy === user.id,
+    ).length,
+    joinedEventCount: DUMMY_EVENTS.filter((event) =>
+      getDummyParticipantsWithProfiles(event.id).some(
+        ({ participant }) => participant.userId === user.id,
+      ),
+    ).length,
+  }));
+}
+
+export function getAdminDashboardMetrics(): AdminDashboardMetrics {
+  const now = new Date();
+  return {
+    eventsToday: DUMMY_EVENTS.filter((event) =>
+      isSameUTCDate(event.createdAt, now),
+    ).length,
+    eventsThisWeek: DUMMY_EVENTS.filter((event) =>
+      isWithinDays(event.createdAt, 7),
+    ).length,
+    eventsThisMonth: DUMMY_EVENTS.filter((event) =>
+      isWithinDays(event.createdAt, 30),
+    ).length,
+    eventsTotal: DUMMY_EVENTS.length,
+    usersToday: DUMMY_USERS.filter((user) => isSameUTCDate(user.createdAt, now))
+      .length,
+    usersThisWeek: DUMMY_USERS.filter((user) => isWithinDays(user.createdAt, 7))
+      .length,
+    usersTotal: DUMMY_USERS.length,
+  };
+}
+
+function buildTrend(
+  items: { createdAt: string }[],
+  days: number,
+): ChartPoint[] {
+  const points: ChartPoint[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const date = new Date(Date.now() - i * DAY_MS);
+    const count = items.filter((item) =>
+      isSameUTCDate(item.createdAt, date),
+    ).length;
+    points.push({ date: toISODate(date).slice(0, 10), count });
+  }
+  return points;
+}
+
+export function getEventTrend(days: number): ChartPoint[] {
+  return buildTrend(DUMMY_EVENTS, days);
+}
+
+export function getUserTrend(days: number): ChartPoint[] {
+  return buildTrend(DUMMY_USERS, days);
 }

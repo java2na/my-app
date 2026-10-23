@@ -1,3 +1,13 @@
+import { EventTable } from "@/components/admin/event-table";
+import { getAdminEventRows } from "@/lib/dummy-data";
+
 export default function AdminEventsPage() {
-  return <div>이벤트 관리 (TODO: Task 011 — F013 테이블/검색/필터)</div>;
+  const rows = getAdminEventRows();
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">이벤트 관리</h1>
+      <EventTable rows={rows} />
+    </div>
+  );
 }

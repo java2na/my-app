@@ -30,3 +30,36 @@ export interface EmptyStateProps {
   description?: string;
   action?: ReactNode;
 }
+
+export interface AdminMetricCardProps {
+  label: string;
+  value: number;
+  icon?: LucideIcon;
+}
+
+export interface AdminEventRow {
+  event: Event;
+  hostName: string;
+  participantCount: number;
+}
+
+export interface AdminUserRow {
+  user: UserProfile;
+  createdEventCount: number;
+  joinedEventCount: number;
+}
+
+export interface ChartPoint {
+  date: string;
+  count: number;
+}
+
+export interface AdminDashboardMetrics {
+  eventsToday: number;
+  eventsThisWeek: number;
+  eventsThisMonth: number;
+  eventsTotal: number;
+  usersToday: number;
+  usersThisWeek: number;
+  usersTotal: number;
+}
