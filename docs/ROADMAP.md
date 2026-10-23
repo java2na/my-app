@@ -183,13 +183,12 @@ Gather는 5-30명 규모의 소규모 이벤트 주최자와 참여자를 위한
   - ✅ 프로덕션 배포 및 도메인 연결 — Vercel 프로덕션 배포 성공(cacheComponents 정상 동작), 커스텀 도메인 없이 기본 `*.vercel.app` 사용. 배포 직후 Vercel Deployment Protection이 production까지 막고 있던 것을 발견해 production만 공개로 전환
   - ✅ 배포 후 통합 테스트 수행 — Playwright MCP로 프로덕션에서 로그인/이벤트 생성/초대 참여/Realtime 참여자 갱신/관리자 권한 격리까지 전부 재검증, 테스트 데이터 정리 완료
 
-- **Task 016: 이벤트 날짜/시간 타임존 표시 버그 수정**
+- **Task 016: 이벤트 날짜/시간 타임존 표시 버그 수정** ✅ - 완료
   - **배경**: Task 015 프로덕션 통합 테스트 중 발견. 이벤트 생성 시 18시로 선택했는데 상세/참여 페이지에 "오전 09:00"으로 표시됨(9시간 차이, KST-UTC 오프셋과 정확히 일치).
-  - **원인(추정)**: `new Date(...).toLocaleString("ko-KR", {...})` 호출에 `timeZone: "Asia/Seoul"`을 지정하지 않아, 서버(Vercel, 기본 UTC)의 로컬 타임존 기준으로 포맷됨. DB에 저장된 값 자체는 정확한 UTC로 추정되며 표시 로직만 문제일 가능성이 높음(구현 시 재검증 필요).
-  - **영향 범위**: `app/(app)/events/[id]/page.tsx`, `app/join/[invite_code]/page.tsx`, `components/common/event-card.tsx`, `app/(app)/profile/page.tsx`, `components/admin/event-table.tsx`, `components/admin/user-table.tsx` (날짜만 표시하는 두 곳은 자정 근처 경계에서만 영향)
-  - [ ] 각 표시 지점에 `timeZone: "Asia/Seoul"` 명시 (또는 공용 포맷 유틸 함수로 통합)
-  - [ ] 이벤트 생성/수정 폼(`components/events/event-form.tsx`)의 로컬 시간 → UTC 변환 로직도 함께 점검
-  - [ ] Playwright MCP로 특정 시각 선택 → 저장 → 표시까지 왕복 검증
+  - **원인(확정)**: 저장 로직은 정상(브라우저가 "YYYY-MM-DDTHH:mm" 문자열을 로컬 타임존(KST)으로 해석해 정확한 UTC로 변환). `new Date(...).toLocaleString/toLocaleDateString("ko-KR", {...})` 6개 호출 지점에 `timeZone: "Asia/Seoul"`이 빠져 Vercel 서버 기본 타임존(UTC) 기준으로 포맷된 것이 유일한 원인이었다.
+  - ✅ `lib/format-date.ts` 신설(formatEventDateTime/formatLongDate/formatShortDate, timeZone: "Asia/Seoul" 고정) 및 6개 호출 지점(`app/(app)/events/[id]/page.tsx`, `app/join/[invite_code]/page.tsx`, `components/common/event-card.tsx`, `app/(app)/profile/page.tsx`, `components/admin/event-table.tsx`, `components/admin/user-table.tsx`) 교체
+  - ✅ `event-form.tsx`의 입력→저장 변환 로직 점검 — 문제 없음으로 확인(저장은 항상 정확했음)
+  - ✅ Playwright MCP로 TZ=UTC 강제 dev 서버(Vercel 환경 재현)에서 18:00 선택→생성→상세/참여/목록 카드 전부 "오후 06:00" 정확 표시 확인, 프로덕션 배포 및 CI 통과까지 완료
 
 ## 작업별 세부 사항
 

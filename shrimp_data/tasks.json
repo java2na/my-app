@@ -1751,10 +1751,10 @@
       "name": "Sentry 에러 모니터링 연동",
       "description": "@sentry/nextjs를 설치하고 Sentry 공식 Next.js 15 설정(클라이언트/서버/엣지 3개 config + next.config.ts의 withSentryConfig 래핑, 필요 시 instrumentation.ts)을 적용해 프로덕션 에러를 Sentry 대시보드로 수집한다. DSN은 하드코딩하지 않고 NEXT_PUBLIC_SENTRY_DSN 환경변수로 분리한다.",
       "notes": "proxy.ts는 Edge 런타임에서 실행되므로 sentry.edge.config.ts가 이를 커버한다 — 기존 3분리(client/server/proxy) 아키텍처와 자연스럽게 맞물리는 지점이므로 별도 추상화를 추가하지 않는다.",
-      "status": "in_progress",
+      "status": "completed",
       "dependencies": [],
       "createdAt": "2026-10-23T16:53:31.225Z",
-      "updatedAt": "2026-10-23T17:26:18.413Z",
+      "updatedAt": "2026-10-23T17:48:53.592Z",
       "relatedFiles": [
         {
           "path": "next.config.ts",
@@ -1794,17 +1794,19 @@
       ],
       "implementationGuide": "1) `npx @sentry/wizard@latest -i nextjs`를 실행해 Sentry 공식 마법사로 자동 설정(계정/프로젝트 선택, sentry.client.config.ts/sentry.server.config.ts/sentry.edge.config.ts 생성, next.config.ts에 withSentryConfig 자동 래핑)을 완료한다. 마법사가 기존 next.config.ts의 cacheComponents:true 설정을 보존하는지 diff로 확인한다.\n2) 생성된 DSN을 NEXT_PUBLIC_SENTRY_DSN으로 .env.example과 Vercel 환경변수에 추가(이전 작업에서 등록한 3개 키에 추가).\n3) 의도적으로 에러를 발생시키는 임시 코드로 Sentry 대시보드에 이벤트가 수집되는지 1회 확인 후 임시 코드는 제거.",
       "verificationCriteria": "임시로 발생시킨 에러가 Sentry 대시보드 Issues에 실제로 나타난다. next.config.ts에 cacheComponents:true가 여전히 존재하며 빌드가 성공한다.",
-      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다."
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다.",
+      "summary": "Sentry 설정 마법사(npx @sentry/wizard)를 사용자가 직접 실행(브라우저 가입 포함)해 @sentry/nextjs를 설치하고 instrumentation.ts/instrumentation-client.ts/sentry.server.config.ts/sentry.edge.config.ts/app/global-error.tsx를 생성, next.config.ts를 withSentryConfig로 래핑했다(cacheComponents:true 보존 확인). 마법사가 하드코딩한 DSN을 NEXT_PUBLIC_SENTRY_DSN 환경변수로 분리해 3개 파일 모두 수정하고 .env.local/.env.example/Vercel 3개 scope에 등록했다. Sentry가 만들어준 예시 코드(app/sentry-example-page, app/api/sentry-example-api)로 실제 테스트를 진행하는 과정에서 두 가지 실제 버그를 발견해 수정했다: (1) 예시 API 라우트의 `export const dynamic = 'force-dynamic'`이 cacheComponents와 충돌해 빌드 에러 발생 → 해당 라인 제거(불필요한 설정이었음), (2) Sentry의 tunnelRoute(/monitoring)가 proxy.ts의 인증 리다이렉트에 막혀 에러 리포트가 실제로 Sentry에 도달하지 못함 → proxy.ts 공개 경로 allowlist에 /monitoring 추가. Playwright MCP로 신규 테스트 계정(Supabase SQL로 이메일 확인 처리)을 만들어 로그인 후 예시 페이지에서 프론트/백엔드 에러를 발생시켰고, 사용자가 Sentry 대시보드 Issues 페이지에서 두 에러가 실제로 수집된 것을 직접 확인했다. 테스트 후 예시 페이지/API와 테스트 계정을 모두 삭제했고, lint/type-check/build 및 GitHub Actions CI(1m23s)까지 모두 통과를 확인한 뒤 커밋·푸시했다.",
+      "completedAt": "2026-10-23T17:48:53.569Z"
     },
     {
       "id": "4d9bef59-938e-49b1-aa88-7893afdb0b06",
       "name": "Google Analytics(GA4) 연동",
       "description": "@next/third-parties의 GoogleAnalytics 컴포넌트를 app/layout.tsx에 추가해 GA4 추적을 연동한다. 커스텀 script 태그를 직접 삽입하는 대신 Next.js 15 공식 권장 패턴을 사용해 Task 014의 성능 목표(FCP/TTI)에 미치는 영향을 최소화한다. 측정 ID는 NEXT_PUBLIC_GA_MEASUREMENT_ID 환경변수로 분리한다.",
       "notes": "GA 연동은 app/layout.tsx 한 곳만 수정하며 기존 다크모드/semantic 토큰 스타일링 규칙과 무관하므로 건드리지 않는다.",
-      "status": "in_progress",
+      "status": "completed",
       "dependencies": [],
       "createdAt": "2026-10-23T16:53:31.225Z",
-      "updatedAt": "2026-10-23T17:26:18.730Z",
+      "updatedAt": "2026-10-23T17:48:58.166Z",
       "relatedFiles": [
         {
           "path": "app/layout.tsx",
@@ -1824,14 +1826,16 @@
       ],
       "implementationGuide": "1) `npm install @next/third-parties` 설치.\n2) app/layout.tsx의 RootLayout에서 `</body>` 직전(기존 ThemeProvider/Toaster 구조는 그대로 유지)에 `import { GoogleAnalytics } from '@next/third-parties/google'` 후 `<GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID!} />` 추가.\n3) NEXT_PUBLIC_GA_MEASUREMENT_ID를 .env.example과 Vercel 환경변수(Production/Preview/Development)에 추가.\n4) 배포 후 GA4 실시간 리포트에서 페이지뷰 이벤트가 수집되는지 확인(이는 다음 통합 테스트 작업에서 같이 검증 가능).",
       "verificationCriteria": "app/layout.tsx에 GoogleAnalytics 컴포넌트가 추가되어 빌드가 성공하고, 배포 후 GA4 실시간 리포트에서 최소 1건의 페이지뷰가 수집된다.",
-      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다."
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다.",
+      "summary": "@next/third-parties를 설치하고 app/layout.tsx의 </body> 직전에 GoogleAnalytics 컴포넌트를 추가했다(gaId는 사용자가 제공한 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-MNEKC9YNXJ 환경변수로 분리, 기존 ThemeProvider/Toaster 구조는 그대로 유지). .env.local/.env.example에 키를 추가하고 Vercel Production/Preview/Development 3개 scope에 모두 등록했다. Playwright MCP로 dev 서버에서 홈페이지를 방문해 네트워크 요청을 확인한 결과 google-analytics.com/g/collect에 tid=G-MNEKC9YNXJ, en=page_view로 실제 페이지뷰 이벤트가 전송되고 204 응답을 받는 것을 확인했다. lint/type-check/build와 GitHub Actions CI(Sentry 작업과 함께 1m23s)까지 모두 통과를 확인한 뒤 커밋·푸시했다.",
+      "completedAt": "2026-10-23T17:48:58.158Z"
     },
     {
       "id": "4f006bbd-c501-48af-adc4-e248dcf0a845",
       "name": "프로덕션 배포 및 cacheComponents 빌드 검증, 도메인 연결",
       "description": "Sentry/GA 연동이 반영된 master 브랜치를 Vercel에 프로덕션 배포하고, cacheComponents:true 플래그 하에서 실제 프로덕션 빌드가 정상 동작하는지 확인한다. 사용자가 보유한 커스텀 도메인이 있으면 연결하고, 없으면 Vercel 기본 제공 도메인(*.vercel.app)으로 완료 처리한다.",
       "notes": "도메인 연결은 사용자 보유 여부에 따라 선택적 단계이며, 없다고 해서 이 작업이 미완료로 간주되지 않는다(불필요한 블로킹 방지).",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [
         {
           "taskId": "fec4241a-73ad-4ac7-82d6-f072cd810206"
@@ -1844,7 +1848,7 @@
         }
       ],
       "createdAt": "2026-10-23T16:53:31.225Z",
-      "updatedAt": "2026-10-23T16:53:31.225Z",
+      "updatedAt": "2026-10-23T17:54:43.954Z",
       "relatedFiles": [
         {
           "path": "next.config.ts",
@@ -1854,21 +1858,23 @@
       ],
       "implementationGuide": "1) master 브랜치 push로 Vercel 프로덕션 배포 트리거(또는 Vercel 대시보드에서 수동 Deploy).\n2) Vercel 빌드 로그에서 next build가 cacheComponents:true 하에 에러 없이 완료되는지 확인. 실패 시 Sentry wizard가 생성한 변경과 cacheComponents 상호작용을 원인으로 우선 조사.\n3) 사용자에게 보유 커스텀 도메인 여부를 확인: 있으면 Vercel Project Settings → Domains에 추가하고 DNS 레코드(CNAME/A)를 안내, 없으면 기본 *.vercel.app 도메인으로 완료.\n4) 배포된 프로덕션 URL에 접속해 홈페이지가 정상 렌더링되는지 1차 확인.",
       "verificationCriteria": "Vercel 프로덕션 배포가 성공 상태(Ready)이며, 프로덕션 URL에서 홈페이지가 정상 로드된다. 커스텀 도메인이 있다면 연결 완료, 없다면 *.vercel.app 도메인 사용으로 완료 처리.",
-      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다."
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다.",
+      "summary": "Git 연동이 되어 있어 Task3+4 커밋 push 시 Vercel이 자동으로 프로덕션 배포를 트리거했다(dpl_BsWFN2KuaEgGEmw2BPs8do1cYezh, status Ready). vercel inspect --logs로 실제 빌드 로그를 확인해 cacheComponents:true가 정상 동작함을 검증(Cache Components enabled, 26개 페이지 정상 생성, Build Completed in 50s). Playwright로 production 별칭 도메인(my-app-whfkddk-4720.vercel.app)에 접속했으나 Vercel Deployment Protection(ssoProtection.deploymentType=all_except_custom_domains)에 막혀 실제 사용자도 Vercel 로그인 화면을 보게 되는 문제를 발견했다. 사용자 확인 후 Vercel REST API(vercel api CLI 서브커맨드가 현재 버전에서 비정상 동작해, CLI가 로컬에 저장한 auth 토큰을 읽어 직접 https://api.vercel.com 호출)로 ssoProtection.deploymentType을 'preview'로 PATCH해 production만 공개, preview는 보호 유지로 전환했다. 이후 Playwright로 production URL에 다시 접속해 로그인 없이 실제 랜딩 페이지(Gather 소개, 로그인 링크, 네비게이션)가 정상 렌더링됨을 확인했다. 커스텀 도메인은 사용자가 보유하지 않아 기본 *.vercel.app 도메인(my-app-whfkddk-4720.vercel.app)으로 완료 처리했다. 임시로 사용한 API 응답 캐시 파일은 모두 정리했다.",
+      "completedAt": "2026-10-23T17:54:43.946Z"
     },
     {
       "id": "0c319aed-3815-4657-8c37-b7a31dea2a26",
       "name": "배포 후 Playwright MCP 통합 테스트",
       "description": "프로덕션 URL을 대상으로 Playwright MCP를 사용해 Task 008~011에서 검증된 핵심 플로우(이메일/Google 로그인, 이벤트 생성, 초대 링크 참여, 실시간 참여자 업데이트, 관리자 대시보드 접근 및 권한 격리)를 축약 재검증한다. 이 작업은 API/비즈니스 로직 검증에 해당하므로 Playwright MCP 테스트 체크리스트를 필수로 포함한다.",
       "notes": "Sentry/GA가 실제로 이벤트를 수집하는지도 이 테스트 중에 함께 확인 가능(에러 유발 1회, 페이지 이동 후 GA 실시간 리포트 확인).",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [
         {
           "taskId": "4f006bbd-c501-48af-adc4-e248dcf0a845"
         }
       ],
       "createdAt": "2026-10-23T16:53:31.225Z",
-      "updatedAt": "2026-10-23T16:53:31.225Z",
+      "updatedAt": "2026-10-23T18:02:43.547Z",
       "relatedFiles": [
         {
           "path": "app/auth/login",
@@ -1893,7 +1899,61 @@
       ],
       "implementationGuide": "프로덕션 URL(Vercel 배포 URL 또는 연결된 커스텀 도메인)에 대해 Playwright MCP로 다음을 순서대로 수행: 로그인 → 이벤트 생성 → 초대 링크 복사 → 새 세션/시크릿 컨텍스트에서 초대 링크로 참여 → 원래 세션에서 실시간 참여자 수 증가 확인 → 관리자 계정으로 /admin/dashboard 접근 → 일반 계정으로 /admin/dashboard 접근 시 /admin/login 리다이렉트 확인. 테스트 후 생성한 더미 이벤트/참여 기록은 정리한다.",
       "verificationCriteria": "## 테스트 체크리스트\n- [ ] 이메일/비밀번호 로그인 성공 후 /events로 정상 이동\n- [ ] 이벤트 생성 성공 및 초대 링크 복사 동작\n- [ ] 시크릿 컨텍스트에서 초대 링크 접속 → 로그인 후 참여 확인\n- [ ] 원래 세션에서 Realtime으로 참여자 수가 자동 갱신됨\n- [ ] 관리자 계정으로 /admin/dashboard 접근 성공, 지표가 실제 데이터와 일치\n- [ ] 일반 계정(비관리자)으로 /admin/dashboard 접근 시 /admin/login으로 리다이렉트됨\n- [ ] 미인증 상태로 보호된 라우트 접근 시 /auth/login으로 리다이렉트됨(에러 케이스)\n- [ ] 테스트용으로 생성한 이벤트/참여 데이터 정리 완료",
-      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다."
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다.",
+      "summary": "프로덕션 URL(https://my-app-whfkddk-4720.vercel.app)을 대상으로 Playwright MCP 2개 탭으로 핵심 플로우를 전부 재검증했다. (1) 호스트 계정 이메일/비밀번호 로그인 성공. (2) 이벤트 생성 성공, invite_code(SQL로 조회) 확인. (3) 두 번째 탭에서 참여자 계정으로 로그인 후 /join/{code}에서 참여 확인 클릭으로 실제 참여 성공. (4) 호스트 탭을 새로고침 없이 그대로 전환해 '참여자 2명'으로 실시간 자동 갱신됨을 확인(Realtime이 프로덕션 Vercel 환경에서도 정상 동작). (5) 참여자 계정을 service_role JWT claim을 로컬 세션에 설정해 role 자가상승 방지 트리거를 우회, admin으로 승격 후 같은 로그인 세션으로 /admin/dashboard 접근 성공, 7개 지표 카드가 실데이터로 정상 렌더링됨을 확인. (6) 승격 전 동일 계정으로 /admin/dashboard 접근 시 /admin/login 리다이렉트 확인. (7) 로그아웃 후 미인증 상태로 보호 라우트 접근 테스트 — /events는 proxy.ts 설계상 공개 경로라 리다이렉트가 없는 것이 정상임을 재확인하고, 실제 보호 라우트인 /profile로 재시도해 /auth/login 리다이렉트를 확인. (8) 테스트용 이벤트/참여자/계정 2개를 모두 SQL로 삭제해 정리 완료(events/event_participants/auth.users 카운트 0 확인). 부수적으로 Google 이메일 rate limit에 걸려 참여자 계정은 service_role API(auth.admin.createUser)로 이메일 발송 없이 생성했고, 이벤트 날짜 시각이 선택한 18시 대신 오전 09:00으로 표시되는 타임존 버그를 발견했으나 이는 Task 015 범위 밖이라 수정하지 않고 보고만 함.",
+      "completedAt": "2026-10-23T18:02:43.544Z"
+    },
+    {
+      "id": "862eb834-11ef-47ce-9610-42c547c943d2",
+      "name": "이벤트 날짜/시간 타임존 표시 버그 수정",
+      "description": "이벤트 생성 시 선택한 시각(KST)이 상세/참여/목록/관리자 페이지에서 UTC 기준으로 포맷되어 9시간 차이로 표시되는 버그를 수정한다. new Date(...).toLocaleString/toLocaleDateString('ko-KR', {...}) 호출에 timeZone: 'Asia/Seoul'을 명시해 모든 날짜 표시 지점에서 일관되게 KST로 보이도록 한다.",
+      "notes": "표시 로직만의 문제인지, event-form.tsx의 입력→저장 변환 로직 문제인지 구현 시작 시 먼저 Supabase에서 실제 저장된 event_date 값(UTC)을 조회해 원인을 확정한 뒤 수정 범위를 좁힌다. DB 스키마/타입은 변경하지 않는다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T18:05:27.785Z",
+      "updatedAt": "2026-10-23T18:14:24.966Z",
+      "relatedFiles": [
+        {
+          "path": "app/(app)/events/[id]/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "이벤트 상세 날짜 표시"
+        },
+        {
+          "path": "app/join/[invite_code]/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "초대 참여 페이지 날짜 표시"
+        },
+        {
+          "path": "components/common/event-card.tsx",
+          "type": "TO_MODIFY",
+          "description": "이벤트 카드 날짜 표시"
+        },
+        {
+          "path": "app/(app)/profile/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "가입일 표시"
+        },
+        {
+          "path": "components/admin/event-table.tsx",
+          "type": "TO_MODIFY",
+          "description": "관리자 이벤트 테이블 날짜 표시"
+        },
+        {
+          "path": "components/admin/user-table.tsx",
+          "type": "TO_MODIFY",
+          "description": "관리자 사용자 테이블 날짜 표시"
+        },
+        {
+          "path": "components/events/event-form.tsx",
+          "type": "REFERENCE",
+          "description": "로컬 시간 입력 → UTC 변환 로직 점검 대상"
+        }
+      ],
+      "implementationGuide": "1) lib/ 아래 공용 포맷 유틸(예: formatKstDateTime(iso), formatKstDate(iso))을 신설해 Intl.DateTimeFormat 또는 toLocaleString에 timeZone: 'Asia/Seoul'을 고정한다.\n2) app/(app)/events/[id]/page.tsx:36, app/join/[invite_code]/page.tsx:31, components/common/event-card.tsx:10, app/(app)/profile/page.tsx:55, components/admin/event-table.tsx:39, components/admin/user-table.tsx:39의 직접 toLocaleString/toLocaleDateString 호출을 이 유틸로 교체한다.\n3) components/events/event-form.tsx의 로컬 입력(년/월/일/시/분 select) → 제출 시 ISO 변환 로직을 점검해, 브라우저가 Asia/Seoul이 아닐 때도 사용자가 입력한 벽시계 시각이 KST로 해석되어 저장되는지 확인한다(현재는 브라우저 로컬 타임존 기준으로 Date 객체가 생성될 가능성이 있음 — 서버/DB가 아니라 이 지점이 실제 원인일 수도 있으므로 구현 시 둘 다 확인).\n4) Playwright MCP로 특정 시각(예: 18:00) 선택 → 생성 → 상세 페이지 표시가 '오후 06:00' 또는 '18:00'로 정확히 나오는지 end-to-end 검증.",
+      "verificationCriteria": "## 테스트 체크리스트\n- [ ] 이벤트 생성 시 18:00 선택 → 상세 페이지에 18:00(오후 06:00)으로 표시됨\n- [ ] 같은 이벤트가 /join/[invite_code] 미리보기에도 동일하게 18:00으로 표시됨\n- [ ] 이벤트 목록 카드(event-card)에도 동일 시각 표시\n- [ ] 관리자 이벤트/사용자 테이블의 날짜가 KST 기준으로 표시됨(자정 근처 경계 케이스 1건 확인)\n- [ ] Supabase에 저장된 event_date(UTC) 실제값과 비교해 저장 자체는 정확했는지 확인",
+      "analysisResult": "Task 016(이벤트 날짜/시간 타임존 표시 버그 수정): Task 015 프로덕션 통합 테스트 중 발견된 버그. 이벤트 생성 시 18시로 선택했으나 상세/참여 페이지에 \"오전 09:00\"으로 표시됨(정확히 9시간 차이, KST-UTC 오프셋과 일치). grep으로 확인한 영향 범위: app/(app)/events/[id]/page.tsx, app/join/[invite_code]/page.tsx, components/common/event-card.tsx(목록 카드), app/(app)/profile/page.tsx(가입일), components/admin/event-table.tsx, components/admin/user-table.tsx — 전부 `new Date(...).toLocaleString(\"ko-KR\", {...})` 또는 `toLocaleDateString(\"ko-KR\")` 호출에 timeZone 옵션이 없어 Vercel 서버의 기본 타임존(UTC)으로 포맷되는 것이 원인으로 추정됨(DB 저장값 자체는 정상일 가능성이 높으나 구현 시 재검증 필요). components/events/event-form.tsx의 로컬 시간 입력→UTC 변환 로직도 함께 점검 필요.",
+      "summary": "원인을 먼저 코드 분석으로 확정했다: components/events/event-form.tsx의 eventDate는 브라우저가 \"YYYY-MM-DDTHH:mm\" 문자열을 new Date()로 파싱할 때 브라우저의 로컬 타임존(KST)으로 해석되어 UTC로 정확히 변환/저장되고 있었고(저장은 정상), 6개 표시 지점(app/(app)/events/[id]/page.tsx, app/join/[invite_code]/page.tsx, components/common/event-card.tsx, app/(app)/profile/page.tsx, components/admin/event-table.tsx, components/admin/user-table.tsx)이 전부 new Date(...).toLocaleString/toLocaleDateString('ko-KR', {...})에 timeZone을 지정하지 않아 Vercel 서버의 기본 타임존(UTC) 기준으로 포맷되는 것이 유일한 원인이었다. lib/format-date.ts를 신설해 formatEventDateTime/formatLongDate/formatShortDate 3개 유틸에 timeZone: 'Asia/Seoul'을 고정하고 6개 지점을 모두 교체했다. 순수 함수 단위로 TZ=UTC/기본(KST) 양쪽에서 동일하게 '오후 06:00'이 나오는 것을 node 스크립트로 먼저 검증한 뒤, dev 서버를 TZ=UTC로 강제 실행(Vercel 환경 재현)해 실제 Playwright MCP 테스트로 18:00 선택→생성→상세/참여/목록 카드 페이지 전부 '오후 06:00'으로 정확히 표시됨을 확인했다. 테스트 계정/이벤트 정리, lint/type-check/build 통과, 커밋·push 후 GitHub Actions CI(52s) 및 Vercel 프로덕션 자동 배포(Ready)까지 확인했다.",
+      "completedAt": "2026-10-23T18:14:24.962Z"
     }
   ]
 }
