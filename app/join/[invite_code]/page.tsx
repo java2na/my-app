@@ -26,12 +26,14 @@ async function JoinContent({
     notFound();
   }
 
-  const host = await getEventHostProfile(event.id);
+  const host = await getEventHostProfile(event.createdBy);
 
-  const eventDate = new Date(event.eventDate).toLocaleDateString("ko-KR", {
+  const eventDate = new Date(event.eventDate).toLocaleString("ko-KR", {
     year: "numeric",
     month: "long",
     day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
   const supabase = await createClient();
@@ -59,6 +61,10 @@ async function JoinContent({
           <span>{event.location}</span>
         </div>
       </div>
+
+      {event.description && (
+        <p className="text-foreground text-sm">{event.description}</p>
+      )}
 
       {host && (
         <p className="text-muted-foreground text-sm">

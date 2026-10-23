@@ -87,17 +87,20 @@ export async function getEventParticipantsWithProfiles(
 }
 
 export async function getEventHostProfile(
-  eventId: string,
+  hostUserId: string,
 ): Promise<UserProfile | null> {
+  // event_participants의 select RLS(private.is_event_member)는 해당 이벤트 멤버만
+  // 조회를 허용하므로, 아직 참여하지 않은 방문자가 보는 /join 페이지에서 조회하면
+  // 항상 비어 있는 결과가 돈다. profiles는 누구나 조회 가능한 테이블이므로
+  // events.created_by를 바로 profiles.id로 조회해 RLS 제약을 피한다.
   const supabase = await createClient();
   const { data } = await supabase
-    .from("event_participants")
-    .select("profiles(*)")
-    .eq("event_id", eventId)
-    .eq("role", "host")
+    .from("profiles")
+    .select("*")
+    .eq("id", hostUserId)
     .maybeSingle();
 
-  return data?.profiles ? toUserProfile(data.profiles) : null;
+  return data ? toUserProfile(data) : null;
 }
 
 export async function isEventParticipant(

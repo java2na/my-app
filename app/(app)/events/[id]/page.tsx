@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { EventStatusBadge } from "@/components/common/event-status-badge";
 import { CopyInviteLinkButton } from "@/components/events/copy-invite-link-button";
 import { DeleteEventDialog } from "@/components/events/delete-event-dialog";
+import { LeaveEventButton } from "@/components/events/leave-event-button";
 import { LiveParticipantList } from "@/components/events/live-participant-list";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,14 +30,20 @@ async function EventDetailContent({
 
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
-  const isHost = data?.claims?.sub === event.createdBy;
+  const userId = data?.claims?.sub;
+  const isHost = userId === event.createdBy;
 
-  const eventDate = new Date(event.eventDate).toLocaleDateString("ko-KR", {
+  const eventDate = new Date(event.eventDate).toLocaleString("ko-KR", {
     year: "numeric",
     month: "long",
     day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
   const participants = await getEventParticipantsWithProfiles(event.id);
+  const isParticipant = participants.some(
+    (entry) => entry.participant.userId === userId,
+  );
 
   return (
     <div className="flex flex-col gap-6 p-4">
@@ -98,6 +105,10 @@ async function EventDetailContent({
           </Button>
           <DeleteEventDialog eventId={event.id} />
         </div>
+      )}
+
+      {!isHost && isParticipant && userId && (
+        <LeaveEventButton eventId={event.id} userId={userId} />
       )}
     </div>
   );
