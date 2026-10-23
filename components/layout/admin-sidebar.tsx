@@ -16,8 +16,8 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-screen w-60 flex-col border-r border-border bg-background">
-      <div className="flex h-16 items-center border-b border-border px-4 font-semibold">
+    <aside className="border-border bg-background flex h-screen w-60 flex-col border-r">
+      <div className="border-border flex h-16 items-center border-b px-4 font-semibold">
         Gather Admin
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-2">
@@ -40,8 +40,8 @@ export function AdminSidebar() {
           );
         })}
       </nav>
-      <div className="border-t border-border p-2">
-        <LogoutButton />
+      <div className="border-border border-t p-2">
+        <LogoutButton redirectTo="/admin/login" />
       </div>
     </aside>
   );
