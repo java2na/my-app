@@ -267,6 +267,742 @@
       "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 1(\"애플리케이션 골격 구축\") 구현. Task 001(프로젝트 구조 및 라우팅 설정)과 Task 002(타입 정의)를 7개 서브태스크로 분할한다. 핵심 설계: (1) PRD 13페이지 중 기존 `/`, `/auth/login` 2개는 재사용하고 나머지 11개를 신규 생성. (2) 모바일 영역(이벤트 목록/생성/상세/수정, 프로필)은 `app/(app)/` 라우트 그룹으로 묶어 하단 탭바 레이아웃을 공유. (3) 관리자 영역(대시보드/이벤트/사용자/통계)은 `app/admin/(dashboard)/` 라우트 그룹으로 묶어 좌측 사이드바 레이아웃을 공유하고, `/admin/login`은 그 그룹 밖에 둬 사이드바 없이 노출. (4) `/join/[invite_code]`는 공개 라우트로 레이아웃 그룹 없이 루트 layout만 적용. (5) `lib/supabase/proxy.ts`의 인증 리다이렉트 allowlist에 `/join`, `/admin/login`을 추가하고 죽은 `/instruments` 예외를 제거, `/admin` role 체크는 Phase 3(Task 008) 자리로 TODO만 남김. (6) `lib/types/`에 Event/EventParticipant/UserProfile 등 임시 프론트엔드 타입을 신설하고 `lib/supabase/database.types.ts`(생성 파일, 실제 DB 타입)와 혼용되지 않도록 분리. 기존 `app/protected/*`, 인증 페이지/컴포넌트, `database.types.ts`는 전혀 수정하지 않는다. 모든 신규 page.tsx는 Phase 1 범위이므로 플레이스홀더 텍스트만 반환하는 서버 컴포넌트로 작성하고 실제 UI/비즈니스 로직은 Phase 2/3로 미룬다.",
       "summary": "app/admin/(dashboard)/{dashboard,events,users,analytics}/page.tsx 4개 골격 페이지 생성, 모두 동적 params 없는 단순 서버 컴포넌트. npx tsc --noEmit, npm run lint, npm run build 모두 통과하고 최종 라우트 테이블에 PRD 13개 페이지가 전부 나타남을 확인. 비로그인 상태에서 4개 경로 모두 307로 /auth/login 리다이렉트되는 것을 확인 — admin 영역은 아직 role 체크 전이라 일반 보호 라우트와 동일하게 로그인만 요구하는 것이 Phase1 설계 의도와 일치.",
       "completedAt": "2026-10-22T16:12:45.756Z"
+    },
+    {
+      "id": "16f27f2a-42ea-4082-8183-2085a3d8dfa7",
+      "name": "shadcn/ui 신규 컴포넌트 설치 (Avatar, Dialog, Select, Form, Sonner, Skeleton)",
+      "description": "components/ui/에 아직 없는 shadcn/ui 컴포넌트 6종을 CLI로 설치한다. 현재 components/ui/에는 badge, button, card, checkbox, dropdown-menu, input, label만 존재(shrimp-rules.md로 확인됨). ROADMAP의 'Toast' 항목은 shadcn 최신 관례에 따라 Sonner로 대체 설치한다. Form 설치 시 react-hook-form 등 의존성이 package.json에 함께 추가될 수 있으나 이는 CLI 표준 동작이며 Task 004에서 재설치할 필요가 없어지는 것일 뿐 충돌이 아니다.",
+      "notes": "components/ui/의 기존 7개 파일(badge, button, card, checkbox, dropdown-menu, input, label)은 수정하지 않는다. shadcn MCP 서버가 연결 실패 상태이므로 CLI(npx)만 사용한다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T04:45:32.147Z",
+      "updatedAt": "2026-10-23T04:53:53.589Z",
+      "relatedFiles": [
+        {
+          "path": "components/ui/avatar.tsx",
+          "type": "CREATE",
+          "description": "shadcn Avatar 컴포넌트"
+        },
+        {
+          "path": "components/ui/dialog.tsx",
+          "type": "CREATE",
+          "description": "shadcn Dialog 컴포넌트"
+        },
+        {
+          "path": "components/ui/select.tsx",
+          "type": "CREATE",
+          "description": "shadcn Select 컴포넌트"
+        },
+        {
+          "path": "components/ui/form.tsx",
+          "type": "CREATE",
+          "description": "shadcn Form 컴포넌트"
+        },
+        {
+          "path": "components/ui/sonner.tsx",
+          "type": "CREATE",
+          "description": "shadcn Sonner(Toast 대체) 컴포넌트"
+        },
+        {
+          "path": "components/ui/skeleton.tsx",
+          "type": "CREATE",
+          "description": "shadcn Skeleton 프리미티브"
+        },
+        {
+          "path": "package.json",
+          "type": "TO_MODIFY",
+          "description": "shadcn add가 자동으로 추가하는 의존성 반영"
+        },
+        {
+          "path": "components.json",
+          "type": "REFERENCE",
+          "description": "style=new-york 등 기존 shadcn 설정 확인용"
+        }
+      ],
+      "implementationGuide": "1) `npx shadcn@latest add avatar dialog select form sonner skeleton` 한 번에 실행.\n2) 설치 실패 시 컴포넌트별로 개별 재시도(`npx shadcn@latest add avatar` 등).\n3) 설치 후 components/ui/{avatar,dialog,select,form,sonner,skeleton}.tsx가 생성되고 기존 badge.tsx/card.tsx 등은 변경되지 않았는지 git diff로 확인.\n4) package.json에 추가된 의존성(react-hook-form, @hookform/resolvers, sonner 등)을 확인만 하고 별도 조정하지 않는다.\n5) components/ui/에 손으로 파일을 작성해 대체하지 않는다(shrimp-rules.md 금지 행위).",
+      "verificationCriteria": "components/ui/ 아래 6개 신규 파일이 생성되고, npx tsc --noEmit과 npm run lint가 통과한다. 기존 7개 ui 컴포넌트 파일의 diff가 없다.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 003(공통 컴포넌트 라이브러리 구현)의 최종 목표: Task 004/005(주최자/참여자 모바일 UI)가 재사용할 수 있는 공통 UI 컴포넌트 5종(EventCard, EventStatusBadge, ParticipantCard, 로딩 스켈레톤, EmptyState)과 더미 데이터 유틸리티를 완성한다. 핵심 설계 결정: (1) shadcn/ui 미설치 컴포넌트(Avatar, Dialog, Select, Form, Sonner, Skeleton)는 반드시 `npx shadcn@latest add`로만 추가하고 components/ui/에 손으로 작성하지 않는다(shrimp-rules.md). ROADMAP의 \"Toast\" 항목은 현재 shadcn 생태계 표준에 따라 Sonner로 대체 설치한다. (2) 도메인 합성 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/EmptyState/스켈레톤)는 신규 디렉토리 components/common/ 아래 두고, 기존 components/ui/의 Card/Badge/Avatar/Skeleton 프리미티브를 합성해서 구현하며 재구현하지 않는다. (3) EventCardProps/ParticipantCardProps/EventStatusBadgeProps는 Task 002(lib/types/components.ts)에서 이미 확정된 공개 계약이므로 시그니처를 변경하지 않고 그대로 사용하며, EmptyStateProps 1개만 동일 파일에 추가한다. (4) 더미 데이터 유틸리티(lib/dummy-data.ts)는 lib/types의 Event/EventParticipant/UserProfile을 기반으로 순수 함수만 제공하고 Supabase 클라이언트를 호출하지 않으며, 각 더미 레코드는 안정적인 id(crypto.randomUUID() 등)를 가져 리스트 렌더링 key로 재사용 가능해야 한다. (5) 색상은 전부 시맨틱 Tailwind 토큰만 사용하고 cn()으로 className을 합성하며 하드코딩 색상/인라인 스타일을 금지한다. (6) app/ 라우트 통합은 Task 004/005 범위이므로 이번 작업에서는 하지 않는다. (7) 이 Task는 순수 UI 컴포넌트/더미 데이터 작업이라 ROADMAP의 \"API/비즈니스 로직 작업 시 Playwright MCP 테스트 필수\" 규칙 대상이 아니며, npx tsc --noEmit / npm run lint / npm run build 3종 통과가 검증 기준이다.",
+      "summary": "Avatar/Dialog/Select/Sonner/Skeleton은 `npx shadcn@latest add`로 일괄 설치 성공. Form은 @hookform/resolvers@6.0.0의 자체 peer 충돌(effect ^3 vs ^4, 업스트림 버그, 이 repo와 무관)로 배치 설치가 막혀 react-hook-form/@hookform/resolvers/zod를 --legacy-peer-deps로 선설치 후 CLI로 form.tsx만 추가. 설치 중 발견한 중요 이슈: 최신 shadcn 레지스트리 템플릿이 cn()을 `@/lib/utils`가 아닌 신규 npm 패키지 `cn`에서, radix를 개별 `@radix-ui/react-*` 대신 통합 `radix-ui` 패키지에서 가져오는 새 스타일로 바뀌어 있어, 그대로 받으면 CLAUDE.md의 \"cn()은 lib/utils.ts에서\" 규칙과 기존 badge/card/checkbox 등의 관례를 깨뜸. avatar/dialog/select/skeleton 4개 파일의 cn import만 `@/lib/utils`로 수정하고 미사용 `cn` npm 패키지는 제거(uninstall). Form이 button.tsx/label.tsx를 덮어쓰려는 것은 `--dry-run`/`--view`로 사전 확인 후 적용하지 않고, `--view`로 받은 공식 레지스트리 form.tsx 내용을 그대로 손으로 저장(cn import만 동일하게 수정)해 기존 Label을 그대로 재사용하도록 처리. 결과적으로 기존 7개 ui 컴포넌트 파일은 git diff 없음(변경 없음), 신규 6개 파일만 추가. radix-ui 통합 패키지와 개별 @radix-ui/react-* 패키지가 공존하게 된 점은 되돌리지 않고 사용자에게 투명하게 보고하기로 함(기능적으로는 문제 없으나 패키징 방식 혼재). npx tsc --noEmit, npm run lint, npm run build 3종 모두 통과.",
+      "completedAt": "2026-10-23T04:53:53.587Z"
+    },
+    {
+      "id": "84af3304-9d61-4154-833f-9dc573e455b7",
+      "name": "EventStatusBadge + EventCard 공통 컴포넌트 구현",
+      "description": "lib/types/components.ts에 이미 정의된 EventStatusBadgeProps와 EventCardProps를 그대로 사용해 components/common/event-status-badge.tsx와 components/common/event-card.tsx를 구현한다. EventStatusBadge는 기존 components/ui/badge.tsx의 Badge를 감싸는 wrapper로, status('upcoming'|'ongoing'|'ended')를 variant+한글 라벨로 매핑한다. EventCard는 components/ui/card.tsx(Card/CardHeader/CardContent 등)를 합성해 커버 이미지, 제목, 날짜, 장소, 참여자 수, EventStatusBadge를 표시한다.",
+      "notes": "lib/types/components.ts의 EventCardProps/EventStatusBadgeProps 시그니처는 변경하지 않는다. Link 래핑이나 클릭 핸들러는 Task 004/005 범위이므로 추가하지 않는다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T04:45:32.147Z",
+      "updatedAt": "2026-10-23T04:54:44.733Z",
+      "relatedFiles": [
+        {
+          "path": "components/common/event-card.tsx",
+          "type": "CREATE",
+          "description": "이벤트 카드 컴포넌트"
+        },
+        {
+          "path": "components/common/event-status-badge.tsx",
+          "type": "CREATE",
+          "description": "이벤트 상태 뱃지 컴포넌트"
+        },
+        {
+          "path": "lib/types/components.ts",
+          "type": "REFERENCE",
+          "description": "EventCardProps, EventStatusBadgeProps 정의(변경 금지)"
+        },
+        {
+          "path": "lib/types/event.ts",
+          "type": "REFERENCE",
+          "description": "Event, EventStatus 타입"
+        },
+        {
+          "path": "components/ui/card.tsx",
+          "type": "REFERENCE",
+          "description": "합성에 사용할 기존 Card 프리미티브"
+        },
+        {
+          "path": "components/ui/badge.tsx",
+          "type": "REFERENCE",
+          "description": "합성에 사용할 기존 Badge 프리미티브"
+        }
+      ],
+      "implementationGuide": "1) components/common/event-status-badge.tsx:\n```\nconst STATUS_MAP: Record<Event['status'], { label: string; variant: BadgeProps['variant'] }> = {\n  upcoming: { label: '예정', variant: 'outline' },\n  ongoing: { label: '진행 중', variant: 'default' },\n  ended: { label: '종료', variant: 'secondary' },\n};\nfunction EventStatusBadge({ status }: EventStatusBadgeProps) {\n  const { label, variant } = STATUS_MAP[status];\n  return <Badge variant={variant}>{label}</Badge>;\n}\n```\n2) components/common/event-card.tsx: EventCardProps 구조분해(event, participantCount). coverImageUrl이 있으면 next/image(aspect-video, object-cover), 없으면 bg-muted 플레이스홀더 div. CardHeader에 제목+EventStatusBadge, CardContent에 날짜(toLocaleDateString 등)·장소(lucide MapPin/Calendar 아이콘)·참여자 수 텍스트. className?: string prop을 받아 cn()으로 루트에 병합.\n3) 두 컴포넌트 모두 'use client' 불필요(순수 presentational, 이벤트 핸들러 없음) — 서버 컴포넌트로 작성.\n4) Badge/Card 등은 재구현하지 않고 기존 components/ui/에서 import.",
+      "verificationCriteria": "EventCard에 더미 Event 객체(upcoming/ongoing/ended 각 1개, coverImageUrl null 포함 1개)를 전달했을 때 타입 오류 없이 렌더링 가능함을 npx tsc --noEmit으로 확인. npm run lint 통과. 색상은 시맨틱 토큰만 사용(하드코딩 색상 없음).",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 003(공통 컴포넌트 라이브러리 구현)의 최종 목표: Task 004/005(주최자/참여자 모바일 UI)가 재사용할 수 있는 공통 UI 컴포넌트 5종(EventCard, EventStatusBadge, ParticipantCard, 로딩 스켈레톤, EmptyState)과 더미 데이터 유틸리티를 완성한다. 핵심 설계 결정: (1) shadcn/ui 미설치 컴포넌트(Avatar, Dialog, Select, Form, Sonner, Skeleton)는 반드시 `npx shadcn@latest add`로만 추가하고 components/ui/에 손으로 작성하지 않는다(shrimp-rules.md). ROADMAP의 \"Toast\" 항목은 현재 shadcn 생태계 표준에 따라 Sonner로 대체 설치한다. (2) 도메인 합성 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/EmptyState/스켈레톤)는 신규 디렉토리 components/common/ 아래 두고, 기존 components/ui/의 Card/Badge/Avatar/Skeleton 프리미티브를 합성해서 구현하며 재구현하지 않는다. (3) EventCardProps/ParticipantCardProps/EventStatusBadgeProps는 Task 002(lib/types/components.ts)에서 이미 확정된 공개 계약이므로 시그니처를 변경하지 않고 그대로 사용하며, EmptyStateProps 1개만 동일 파일에 추가한다. (4) 더미 데이터 유틸리티(lib/dummy-data.ts)는 lib/types의 Event/EventParticipant/UserProfile을 기반으로 순수 함수만 제공하고 Supabase 클라이언트를 호출하지 않으며, 각 더미 레코드는 안정적인 id(crypto.randomUUID() 등)를 가져 리스트 렌더링 key로 재사용 가능해야 한다. (5) 색상은 전부 시맨틱 Tailwind 토큰만 사용하고 cn()으로 className을 합성하며 하드코딩 색상/인라인 스타일을 금지한다. (6) app/ 라우트 통합은 Task 004/005 범위이므로 이번 작업에서는 하지 않는다. (7) 이 Task는 순수 UI 컴포넌트/더미 데이터 작업이라 ROADMAP의 \"API/비즈니스 로직 작업 시 Playwright MCP 테스트 필수\" 규칙 대상이 아니며, npx tsc --noEmit / npm run lint / npm run build 3종 통과가 검증 기준이다.",
+      "summary": "components/common/event-status-badge.tsx와 event-card.tsx를 신규 작성. EventStatusBadge는 기존 Badge를 감싸 status('upcoming'/'ongoing'/'ended')를 variant(outline/default/secondary)+한글 라벨('예정'/'진행 중'/'종료')로 매핑하는 순수 wrapper로, Badge/Card를 재구현하지 않음. EventCard는 Card/CardHeader/CardTitle/CardContent를 합성해 next/image로 커버 이미지(없으면 bg-muted 플레이스홀더)를, lucide 아이콘(Calendar/MapPin/Users)으로 날짜·장소·참여자 수를 표시. lib/types/components.ts의 EventCardProps/EventStatusBadgeProps 시그니처는 변경하지 않고 className?은 별도 인터섹션 타입으로만 추가(공개 계약 불변). 색상은 전부 시맨틱 토큰(bg-muted, text-muted-foreground)만 사용, cn()으로 className 병합. 'use client' 없이 서버 컴포넌트로 작성(이벤트 핸들러 없음). app/ 라우트에는 연결하지 않음(Task 004/005 범위). npx tsc --noEmit, npm run lint 모두 통과.",
+      "completedAt": "2026-10-23T04:54:44.730Z"
+    },
+    {
+      "id": "ed061e28-27d4-47a8-b375-0e160f1152a0",
+      "name": "ParticipantCard 공통 컴포넌트 구현",
+      "description": "lib/types/components.ts에 이미 정의된 ParticipantCardProps를 사용해 components/common/participant-card.tsx를 구현한다. shadcn Avatar(avatarUrl 있으면 AvatarImage, 없으면 이름 이니셜을 AvatarFallback으로 표시)와 role('host'면 '주최자' Badge 표시)을 조합한다.",
+      "notes": "ParticipantCardProps 시그니처는 변경하지 않는다. 실시간 목록 갱신(Task 010 Realtime)과는 무관한 순수 presentational 컴포넌트다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "16f27f2a-42ea-4082-8183-2085a3d8dfa7"
+        }
+      ],
+      "createdAt": "2026-10-23T04:45:32.147Z",
+      "updatedAt": "2026-10-23T04:55:20.002Z",
+      "relatedFiles": [
+        {
+          "path": "components/common/participant-card.tsx",
+          "type": "CREATE",
+          "description": "참여자 프로필 카드 컴포넌트"
+        },
+        {
+          "path": "lib/types/components.ts",
+          "type": "REFERENCE",
+          "description": "ParticipantCardProps 정의(변경 금지)"
+        },
+        {
+          "path": "lib/types/participant.ts",
+          "type": "REFERENCE",
+          "description": "EventParticipant, ParticipantRole 타입"
+        },
+        {
+          "path": "lib/types/user.ts",
+          "type": "REFERENCE",
+          "description": "UserProfile 타입"
+        },
+        {
+          "path": "components/ui/avatar.tsx",
+          "type": "DEPENDENCY",
+          "description": "선행 작업에서 설치된 Avatar 프리미티브"
+        },
+        {
+          "path": "components/ui/badge.tsx",
+          "type": "REFERENCE",
+          "description": "role 뱃지에 재사용할 기존 Badge"
+        }
+      ],
+      "implementationGuide": "1) components/common/participant-card.tsx:\n```\nfunction getInitial(name: string | null) { return name ? name.trim().charAt(0).toUpperCase() : '?'; }\nfunction ParticipantCard({ participant, profile }: ParticipantCardProps) {\n  return (\n    <div className=\"flex items-center gap-3\">\n      <Avatar>\n        {profile.avatarUrl && <AvatarImage src={profile.avatarUrl} alt={profile.name ?? ''} />}\n        <AvatarFallback>{getInitial(profile.name)}</AvatarFallback>\n      </Avatar>\n      <span className=\"text-sm font-medium\">{profile.name ?? '이름 없음'}</span>\n      {participant.role === 'host' && <Badge variant=\"secondary\">주최자</Badge>}\n    </div>\n  );\n}\n```\n2) 터치 영역/모바일 레이아웃 고려해 최소 높이 48px(h-12 또는 패딩)를 보장.\n3) Avatar 관련 컴포넌트는 'shadcn/ui 신규 컴포넌트 설치' 작업에서 생성된 components/ui/avatar.tsx를 import.",
+      "verificationCriteria": "avatarUrl이 null인 더미 참여자와 있는 더미 참여자 양쪽 모두 타입 오류 없이 렌더링 가능함을 npx tsc --noEmit으로 확인. host/participant role 각각에서 뱃지 노출 여부가 분기되는 것을 코드 리뷰로 확인. npm run lint 통과, 터치 영역 48px 이상.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 003(공통 컴포넌트 라이브러리 구현)의 최종 목표: Task 004/005(주최자/참여자 모바일 UI)가 재사용할 수 있는 공통 UI 컴포넌트 5종(EventCard, EventStatusBadge, ParticipantCard, 로딩 스켈레톤, EmptyState)과 더미 데이터 유틸리티를 완성한다. 핵심 설계 결정: (1) shadcn/ui 미설치 컴포넌트(Avatar, Dialog, Select, Form, Sonner, Skeleton)는 반드시 `npx shadcn@latest add`로만 추가하고 components/ui/에 손으로 작성하지 않는다(shrimp-rules.md). ROADMAP의 \"Toast\" 항목은 현재 shadcn 생태계 표준에 따라 Sonner로 대체 설치한다. (2) 도메인 합성 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/EmptyState/스켈레톤)는 신규 디렉토리 components/common/ 아래 두고, 기존 components/ui/의 Card/Badge/Avatar/Skeleton 프리미티브를 합성해서 구현하며 재구현하지 않는다. (3) EventCardProps/ParticipantCardProps/EventStatusBadgeProps는 Task 002(lib/types/components.ts)에서 이미 확정된 공개 계약이므로 시그니처를 변경하지 않고 그대로 사용하며, EmptyStateProps 1개만 동일 파일에 추가한다. (4) 더미 데이터 유틸리티(lib/dummy-data.ts)는 lib/types의 Event/EventParticipant/UserProfile을 기반으로 순수 함수만 제공하고 Supabase 클라이언트를 호출하지 않으며, 각 더미 레코드는 안정적인 id(crypto.randomUUID() 등)를 가져 리스트 렌더링 key로 재사용 가능해야 한다. (5) 색상은 전부 시맨틱 Tailwind 토큰만 사용하고 cn()으로 className을 합성하며 하드코딩 색상/인라인 스타일을 금지한다. (6) app/ 라우트 통합은 Task 004/005 범위이므로 이번 작업에서는 하지 않는다. (7) 이 Task는 순수 UI 컴포넌트/더미 데이터 작업이라 ROADMAP의 \"API/비즈니스 로직 작업 시 Playwright MCP 테스트 필수\" 규칙 대상이 아니며, npx tsc --noEmit / npm run lint / npm run build 3종 통과가 검증 기준이다.",
+      "summary": "components/common/participant-card.tsx 신규 작성. shadcn Avatar(avatarUrl 있으면 AvatarImage, 없으면 이름 이니셜 AvatarFallback)와 기존 Badge(role==='host'일 때만 '주최자' 표시)를 조합. ParticipantCardProps 시그니처는 변경 없이 그대로 사용하고 className?은 인터섹션 타입으로만 확장. min-h-12(48px)로 터치 영역 보장. 색상은 시맨틱 토큰만 사용, cn()으로 클래스 병합. 서버 컴포넌트(이벤트 핸들러 없음). npx tsc --noEmit, npm run lint 모두 통과.",
+      "completedAt": "2026-10-23T04:55:19.999Z"
+    },
+    {
+      "id": "c19d97f5-7312-4075-b92f-1db20c1a65d5",
+      "name": "로딩 스켈레톤 + EmptyState 공통 컴포넌트 구현",
+      "description": "components/common/ 아래 EventCardSkeleton, ParticipantCardSkeleton(각각 EventCard/ParticipantCard와 동일한 레이아웃의 로딩 스켈레톤)과 범용 EmptyState 컴포넌트를 구현한다. EmptyState의 Props 타입(EmptyStateProps)은 lib/types/components.ts에 새로 추가한다(기존 3개 타입은 변경하지 않음).",
+      "notes": "EmptyStateProps 외 기존 EventCardProps/ParticipantCardProps/EventStatusBadgeProps는 변경하지 않는다. Skeleton 프리미티브 자체는 재구현하지 않고 선행 작업에서 설치된 components/ui/skeleton.tsx를 사용한다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "16f27f2a-42ea-4082-8183-2085a3d8dfa7"
+        }
+      ],
+      "createdAt": "2026-10-23T04:45:32.147Z",
+      "updatedAt": "2026-10-23T04:56:01.744Z",
+      "relatedFiles": [
+        {
+          "path": "components/common/event-card-skeleton.tsx",
+          "type": "CREATE",
+          "description": "이벤트 카드 로딩 스켈레톤"
+        },
+        {
+          "path": "components/common/participant-card-skeleton.tsx",
+          "type": "CREATE",
+          "description": "참여자 카드 로딩 스켈레톤"
+        },
+        {
+          "path": "components/common/empty-state.tsx",
+          "type": "CREATE",
+          "description": "빈 상태 UI 컴포넌트"
+        },
+        {
+          "path": "lib/types/components.ts",
+          "type": "TO_MODIFY",
+          "description": "EmptyStateProps 타입 추가"
+        },
+        {
+          "path": "components/ui/skeleton.tsx",
+          "type": "DEPENDENCY",
+          "description": "선행 작업에서 설치된 Skeleton 프리미티브"
+        }
+      ],
+      "implementationGuide": "1) lib/types/components.ts에 추가(기존 파일 상단 '임시 타입' 주석 패턴 유지):\n```\nimport type { LucideIcon } from 'lucide-react';\nexport interface EmptyStateProps {\n  icon?: LucideIcon;\n  title: string;\n  description?: string;\n  action?: React.ReactNode;\n}\n```\n2) components/common/event-card-skeleton.tsx, participant-card-skeleton.tsx: components/ui/skeleton.tsx의 Skeleton(`animate-pulse rounded-md bg-muted`)을 EventCard/ParticipantCard와 동일한 치수(Card 비율, Avatar 원형 크기 등)로 배치해 레이아웃 흔들림(layout shift)을 방지.\n3) components/common/empty-state.tsx: 중앙 정렬 flex-col, icon(optional)·title·description·action(optional, 보통 Button)을 세로로 배치. 아이콘 색상은 text-muted-foreground.\n4) 세 컴포넌트 모두 className?: string을 받아 cn()으로 루트 병합.",
+      "verificationCriteria": "EventCardSkeleton/ParticipantCardSkeleton이 대응 실제 컴포넌트와 유사한 치수로 렌더링됨을 코드 리뷰로 확인. EmptyState가 icon/action 없이도(optional) 타입 오류 없이 렌더링됨을 npx tsc --noEmit으로 확인. npm run lint 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 003(공통 컴포넌트 라이브러리 구현)의 최종 목표: Task 004/005(주최자/참여자 모바일 UI)가 재사용할 수 있는 공통 UI 컴포넌트 5종(EventCard, EventStatusBadge, ParticipantCard, 로딩 스켈레톤, EmptyState)과 더미 데이터 유틸리티를 완성한다. 핵심 설계 결정: (1) shadcn/ui 미설치 컴포넌트(Avatar, Dialog, Select, Form, Sonner, Skeleton)는 반드시 `npx shadcn@latest add`로만 추가하고 components/ui/에 손으로 작성하지 않는다(shrimp-rules.md). ROADMAP의 \"Toast\" 항목은 현재 shadcn 생태계 표준에 따라 Sonner로 대체 설치한다. (2) 도메인 합성 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/EmptyState/스켈레톤)는 신규 디렉토리 components/common/ 아래 두고, 기존 components/ui/의 Card/Badge/Avatar/Skeleton 프리미티브를 합성해서 구현하며 재구현하지 않는다. (3) EventCardProps/ParticipantCardProps/EventStatusBadgeProps는 Task 002(lib/types/components.ts)에서 이미 확정된 공개 계약이므로 시그니처를 변경하지 않고 그대로 사용하며, EmptyStateProps 1개만 동일 파일에 추가한다. (4) 더미 데이터 유틸리티(lib/dummy-data.ts)는 lib/types의 Event/EventParticipant/UserProfile을 기반으로 순수 함수만 제공하고 Supabase 클라이언트를 호출하지 않으며, 각 더미 레코드는 안정적인 id(crypto.randomUUID() 등)를 가져 리스트 렌더링 key로 재사용 가능해야 한다. (5) 색상은 전부 시맨틱 Tailwind 토큰만 사용하고 cn()으로 className을 합성하며 하드코딩 색상/인라인 스타일을 금지한다. (6) app/ 라우트 통합은 Task 004/005 범위이므로 이번 작업에서는 하지 않는다. (7) 이 Task는 순수 UI 컴포넌트/더미 데이터 작업이라 ROADMAP의 \"API/비즈니스 로직 작업 시 Playwright MCP 테스트 필수\" 규칙 대상이 아니며, npx tsc --noEmit / npm run lint / npm run build 3종 통과가 검증 기준이다.",
+      "summary": "lib/types/components.ts에 EmptyStateProps(icon?: LucideIcon, title, description?, action?: ReactNode)를 추가(기존 3개 Props 타입은 변경 없음, '임시 타입' 주석 유지). components/common/event-card-skeleton.tsx는 EventCard와 동일한 비율(aspect-video 커버, 제목/뱃지, 3줄 메타 정보)로 Skeleton을 배치해 레이아웃 흔들림을 방지. participant-card-skeleton.tsx는 ParticipantCard와 동일하게 원형 아바타+텍스트 한 줄 치수로 구성(min-h-12 동일). empty-state.tsx는 icon/action을 선택적으로 받아 중앙 정렬 flex-col로 title/description/action을 표시, 아이콘은 text-muted-foreground. 세 컴포넌트 모두 className?으로 cn() 병합 가능. Skeleton 프리미티브는 재구현 없이 선행 작업에서 설치된 components/ui/skeleton.tsx 재사용. npx tsc --noEmit, npm run lint 모두 통과.",
+      "completedAt": "2026-10-23T04:56:01.741Z"
+    },
+    {
+      "id": "00daca81-8fe5-42df-bc38-a50807f61ebe",
+      "name": "더미 데이터 생성 유틸리티 작성",
+      "description": "lib/dummy-data.ts를 신설해 lib/types의 Event/EventParticipant/UserProfile 타입 기반 더미 데이터 생성 함수를 작성한다. Task 004/005가 페이지 UI를 완성할 때 이 유틸리티로 목록/상세 화면을 채운다. Supabase 클라이언트를 호출하지 않는 순수 함수만 둔다.",
+      "notes": "lib/utils.ts(cn, hasEnvVars)와는 책임이 분리되므로 그 파일을 수정하지 않고 새 파일로 둔다. Supabase 클라이언트(lib/supabase/*)를 import하지 않는다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T04:45:32.147Z",
+      "updatedAt": "2026-10-23T04:57:14.209Z",
+      "relatedFiles": [
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "CREATE",
+          "description": "더미 데이터 생성 유틸리티"
+        },
+        {
+          "path": "lib/types/index.ts",
+          "type": "REFERENCE",
+          "description": "Event/EventParticipant/UserProfile 재export 진입점"
+        },
+        {
+          "path": "lib/utils.ts",
+          "type": "REFERENCE",
+          "description": "기존 유틸리티 파일 컨벤션 참고용(수정 안 함)"
+        }
+      ],
+      "implementationGuide": "1) 파일 최상단에 '임시 더미 데이터 — Task 007에서 실제 Supabase 쿼리로 교체 예정' 주석(lib/types/*.ts와 동일한 패턴).\n2) 안정적 id를 보장하기 위해 crypto.randomUUID() 사용(Node/브라우저 모두 지원, Next.js 15 런타임 확인됨).\n3) 함수 시그니처:\n```\nexport function createDummyProfile(overrides?: Partial<UserProfile>): UserProfile { ... }\nexport function createDummyEvent(overrides?: Partial<Event>): Event { ... }\nexport function createDummyParticipant(eventId: string, overrides?: Partial<EventParticipant>): EventParticipant { ... }\nexport function createDummyEvents(count: number): Event[] { return Array.from({ length: count }, () => createDummyEvent()); }\nexport function createDummyParticipants(eventId: string, count: number): EventParticipant[] { ... }\n```\n4) 날짜(eventDate)는 upcoming/ongoing/ended 상태와 논리적으로 맞도록 상대 날짜(Date.now() 기준 +N일/-N일) 생성, status 필드와 eventDate가 서로 모순되지 않게 한다.\n5) 제목/장소/이름 등 문자열은 한국어 샘플 배열에서 랜덤 선택.",
+      "verificationCriteria": "createDummyEvents(10) 등 호출 시 npx tsc --noEmit 통과, 각 레코드의 id가 서로 중복되지 않음(Set으로 길이 비교해 코드 리뷰 또는 임시 스크립트로 확인), status와 eventDate가 논리적으로 일치. Supabase 관련 import가 없음을 grep으로 확인.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 003(공통 컴포넌트 라이브러리 구현)의 최종 목표: Task 004/005(주최자/참여자 모바일 UI)가 재사용할 수 있는 공통 UI 컴포넌트 5종(EventCard, EventStatusBadge, ParticipantCard, 로딩 스켈레톤, EmptyState)과 더미 데이터 유틸리티를 완성한다. 핵심 설계 결정: (1) shadcn/ui 미설치 컴포넌트(Avatar, Dialog, Select, Form, Sonner, Skeleton)는 반드시 `npx shadcn@latest add`로만 추가하고 components/ui/에 손으로 작성하지 않는다(shrimp-rules.md). ROADMAP의 \"Toast\" 항목은 현재 shadcn 생태계 표준에 따라 Sonner로 대체 설치한다. (2) 도메인 합성 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/EmptyState/스켈레톤)는 신규 디렉토리 components/common/ 아래 두고, 기존 components/ui/의 Card/Badge/Avatar/Skeleton 프리미티브를 합성해서 구현하며 재구현하지 않는다. (3) EventCardProps/ParticipantCardProps/EventStatusBadgeProps는 Task 002(lib/types/components.ts)에서 이미 확정된 공개 계약이므로 시그니처를 변경하지 않고 그대로 사용하며, EmptyStateProps 1개만 동일 파일에 추가한다. (4) 더미 데이터 유틸리티(lib/dummy-data.ts)는 lib/types의 Event/EventParticipant/UserProfile을 기반으로 순수 함수만 제공하고 Supabase 클라이언트를 호출하지 않으며, 각 더미 레코드는 안정적인 id(crypto.randomUUID() 등)를 가져 리스트 렌더링 key로 재사용 가능해야 한다. (5) 색상은 전부 시맨틱 Tailwind 토큰만 사용하고 cn()으로 className을 합성하며 하드코딩 색상/인라인 스타일을 금지한다. (6) app/ 라우트 통합은 Task 004/005 범위이므로 이번 작업에서는 하지 않는다. (7) 이 Task는 순수 UI 컴포넌트/더미 데이터 작업이라 ROADMAP의 \"API/비즈니스 로직 작업 시 Playwright MCP 테스트 필수\" 규칙 대상이 아니며, npx tsc --noEmit / npm run lint / npm run build 3종 통과가 검증 기준이다.",
+      "summary": "lib/dummy-data.ts 신설. 상단에 '임시 더미 데이터 — Task 007에서 교체 예정' 주석(lib/types/*.ts와 동일 패턴). createDummyProfile/createDummyEvent/createDummyEvents/createDummyParticipant/createDummyParticipants 5개 함수를 implementationGuide 시그니처 그대로 구현. status는 eventDateForStatus()로 upcoming(+1~30일)/ongoing(현재)/ended(-1~30일)와 항상 논리적으로 일치하도록 계산 후 status에서 파생시켜 모순 불가능하게 설계. id는 crypto.randomUUID()로 안정적 고유값 보장. coverImageUrl은 next/image 원격 도메인 설정 이슈를 피하기 위해 항상 null로 두고(Task 004/005에서 실제 Storage 연동 시 결정), 한글 샘플 제목/장소/이름 배열에서 랜덤 선택. Supabase 클라이언트 import 없음(grep으로 확인). lib/utils.ts는 수정하지 않음. npx tsc --noEmit, npm run lint, npm run build(Task 003 전체 최종 확인) 모두 통과.",
+      "completedAt": "2026-10-23T04:57:14.207Z"
+    },
+    {
+      "id": "ffd1307f-5619-48a1-8974-1283db1e9e11",
+      "name": "더미 데이터셋 고정화 (lib/dummy-data.ts 확장)",
+      "description": "lib/dummy-data.ts 끝에 모듈 스코프 고정 더미 데이터셋과 조회 헬퍼를 추가한다: DUMMY_EVENTS(8개), 이벤트별 참여자+프로필을 함께 보관하는 내부 Map, getDummyEventById(id), getDummyParticipantsWithProfiles(eventId). 기존 5개 팩토리 함수(createDummyProfile/Event/Events/Participant/Participants)는 변경하지 않는다. 이렇게 해야 Task 004의 목록 페이지와 상세 페이지가 같은 서버 프로세스 내에서 항상 동일한 이벤트/참여자를 보여준다.",
+      "notes": "createDummyEvent/createDummyParticipant/createDummyProfile 등 기존 함수 시그니처는 건드리지 않는다. Supabase import 금지 원칙도 동일하게 유지.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T05:10:35.042Z",
+      "updatedAt": "2026-10-23T05:12:27.571Z",
+      "relatedFiles": [
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "TO_MODIFY",
+          "description": "고정 데이터셋 및 조회 헬퍼 추가"
+        },
+        {
+          "path": "lib/types/event.ts",
+          "type": "REFERENCE",
+          "description": "Event 타입"
+        },
+        {
+          "path": "lib/types/participant.ts",
+          "type": "REFERENCE",
+          "description": "EventParticipant 타입"
+        },
+        {
+          "path": "lib/types/user.ts",
+          "type": "REFERENCE",
+          "description": "UserProfile 타입"
+        }
+      ],
+      "implementationGuide": "lib/dummy-data.ts 파일 끝에 추가:\n```\nexport const DUMMY_EVENTS: Event[] = createDummyEvents(8);\n\nconst DUMMY_PARTICIPANTS_BY_EVENT = new Map<string, { participant: EventParticipant; profile: UserProfile }[]>(\n  DUMMY_EVENTS.map((event) => {\n    const participants = createDummyParticipants(event.id, 2 + Math.floor(Math.random() * 6));\n    return [event.id, participants.map((participant) => ({ participant, profile: createDummyProfile({ id: participant.userId }) }))];\n  })\n);\n\nexport function getDummyEventById(id: string): Event | undefined {\n  return DUMMY_EVENTS.find((event) => event.id === id);\n}\n\nexport function getDummyParticipantsWithProfiles(eventId: string) {\n  return DUMMY_PARTICIPANTS_BY_EVENT.get(eventId) ?? [];\n}\n```\n파일 상단 '임시 더미 데이터' 주석 아래에 '모듈 스코프에서 1회만 생성되며 서버 재시작 시 초기화됨' 한 줄을 추가로 명시한다.",
+      "verificationCriteria": "getDummyEventById(DUMMY_EVENTS[0].id)가 undefined가 아님을 npx tsc --noEmit + 코드 리뷰로 확인. getDummyParticipantsWithProfiles가 모든 이벤트에 대해 2~7개 항목을 반환. npm run lint 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 004(주최자 모바일 UI/UX 완성)의 최종 목표: Task 003 공통 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/스켈레톤/EmptyState)와 더미 데이터 유틸리티를 활용해 홈 랜딩/이벤트 목록/생성/상세/수정/프로필 6개 페이지를 완성한다. 핵심 설계 결정: (1) lib/dummy-data.ts에 모듈 스코프 고정 데이터셋(DUMMY_EVENTS 등)을 추가해 백엔드 없이도 목록→상세 내비게이션 일관성을 확보한다. (2) 프로필 페이지만 예외적으로 실제 Supabase 인증 데이터(getClaims+profiles 테이블, snake_case Database[\"public\"][\"Tables\"][\"profiles\"][\"Row\"] 타입)를 쓰고 나머지 이벤트/참여자 화면은 전부 더미 데이터를 쓴다(사용자와 합의됨) — lib/types/user.ts의 camelCase 더미 UserProfile과 혼용하지 않는다. (3) 이벤트 생성/수정 폼은 components/events/event-form.tsx 하나로 공유해 Zod 스키마 중복을 피한다. (4) 이벤트 상세 페이지는 항상 호스트 뷰로 구현하며 `const isHost = true;` 상수 + 그 상수를 참조하는 몇 개의 JSX 조건부 블록으로 분기점을 좁게 남겨 Task 005가 참여자 뷰를 같은 파일에 추가하기 쉽게 한다. (5) 클립보드 복사/삭제 확인처럼 클라이언트 상호작용이 필요한 조각만 components/events/ 하위 별도 'use client' 컴포넌트로 분리하고 상세/목록 페이지 자체는 서버 컴포넌트로 유지한다(기존 app/(app)/events/[id]/page.tsx의 Suspense+비동기 params 패턴 유지). (6) 이벤트 생성/수정 제출은 실제 Supabase API가 없으므로 Zod 유효성 검사 통과 시 Sonner 토스트 후 더미 상세 페이지로 이동하는 수준까지만 구현하고 `// TODO(Task 009): 실제 Supabase 생성/수정 API 연동` 주석을 남긴다 — 이를 위해 app/layout.tsx에 <Toaster />를 마운트해야 한다. (7) 상태 필터는 Select 같은 클라이언트 위젯 대신 Link 기반 쿼리스트링(?status=) 탭으로 구현해 목록 페이지를 서버 컴포넌트로 유지한다. (8) FAB \"+ 새 이벤트 만들기\" 버튼은 position:fixed가 아니라 sticky로 구현해 MobileViewport의 430px 데스크톱 프레임 안에 올바르게 붙도록 한다. (9) 이 Task에서는 shadcn 컴포넌트를 추가로 설치하지 않는다(Task 003에서 설치된 13개로 충분). (10) 홈 랜딩 교체 시 CLAUDE.md가 보존을 명시한 hasEnvVars 분기(EnvVarWarning/AuthButton)는 그대로 두고 내부 콘텐츠만 Gather 소개로 교체한다. 검증은 npx tsc --noEmit / npm run lint / npm run build 3종이 기본이며, 프로필 페이지는 실제 인증 데이터를 다루므로 추가로 Playwright MCP로 로그인 상태 렌더링을 1회 확인한다.",
+      "summary": "lib/dummy-data.ts에 DUMMY_EVENTS(createDummyEvents(8)), DUMMY_PARTICIPANTS_BY_EVENT(이벤트별 2~7명 참여자+대응 프로필을 Map으로 보관), getDummyEventById(id), getDummyParticipantsWithProfiles(eventId) 추가. 기존 5개 팩토리 함수 시그니처는 변경 없음. 모듈 스코프에서 1회 평가되어 같은 서버 프로세스 내 목록↔상세 내비게이션 시 동일 데이터를 보장(서버 재시작 시 초기화되는 한계를 파일 상단 주석에 명시). Supabase import 없음. npx tsc --noEmit, npm run lint 모두 통과.",
+      "completedAt": "2026-10-23T05:12:27.568Z"
+    },
+    {
+      "id": "585dd446-cc52-4968-900b-b5582e772c21",
+      "name": "홈 랜딩 페이지 교체 및 Toaster 마운트",
+      "description": "app/page.tsx의 Next.js/Supabase 튜토리얼 콘텐츠(Hero, ConnectSupabaseSteps/SignUpUserSteps, DeployButton)를 Gather 서비스 소개로 교체한다(F001). hasEnvVars 분기(EnvVarWarning vs AuthButton)는 CLAUDE.md 지침대로 보존한다. app/layout.tsx에 Sonner Toaster를 마운트하고 metadata(title/description)를 Gather로 갱신한다.",
+      "notes": "components/hero.tsx, tutorial/* 파일 자체는 삭제하지 않는다(다른 곳에서 참조하지 않으면 그대로 두어도 무해하며, 삭제는 이번 Task 범위 밖). hasEnvVars 가드 로직 자체(분기 조건)는 절대 제거하지 않는다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T05:10:35.042Z",
+      "updatedAt": "2026-10-23T05:13:34.325Z",
+      "relatedFiles": [
+        {
+          "path": "app/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "Gather 랜딩 콘텐츠로 교체"
+        },
+        {
+          "path": "app/layout.tsx",
+          "type": "TO_MODIFY",
+          "description": "Toaster 마운트, metadata 갱신"
+        },
+        {
+          "path": "lib/utils.ts",
+          "type": "REFERENCE",
+          "description": "hasEnvVars 가드(변경 금지)"
+        },
+        {
+          "path": "components/ui/sonner.tsx",
+          "type": "DEPENDENCY",
+          "description": "Task 003에서 설치된 Toaster"
+        },
+        {
+          "path": "components/auth-button.tsx",
+          "type": "REFERENCE",
+          "description": "로그인 상태 분기 CTA에 재사용"
+        }
+      ],
+      "implementationGuide": "1) app/page.tsx: 상단 nav(DeployButton 포함 블록, hasEnvVars 분기)는 구조만 유지하되 브랜드명을 'Gather'로 교체. 본문은 Hero 대신 서비스 소개 섹션(제목 + 3가지 핵심 기능 카드: 간편한 이벤트 생성/원클릭 초대 시스템/실시간 참여자 관리 — docs/PRD.md 개요 문구 재사용) + hasEnvVars가 true면 하단에 AuthButton 또는 GoogleLoginButton 기반 CTA. ConnectSupabaseSteps/SignUpUserSteps, Hero, DeployButton 관련 import는 제거.\n2) app/layout.tsx: `import { Toaster } from '@/components/ui/sonner'` 후 ThemeProvider 내부, children 다음 형제로 `<Toaster />` 추가.\n3) metadata.title을 'Gather', description을 PRD 한 줄 소개로 갱신.",
+      "verificationCriteria": "npm run build 결과 '/' 라우트가 정상 렌더링되고 하드코딩된 'Next.js Supabase Starter' 문구가 더 이상 존재하지 않음(grep 확인). app/layout.tsx에 <Toaster /> 존재. npx tsc --noEmit, npm run lint 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 004(주최자 모바일 UI/UX 완성)의 최종 목표: Task 003 공통 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/스켈레톤/EmptyState)와 더미 데이터 유틸리티를 활용해 홈 랜딩/이벤트 목록/생성/상세/수정/프로필 6개 페이지를 완성한다. 핵심 설계 결정: (1) lib/dummy-data.ts에 모듈 스코프 고정 데이터셋(DUMMY_EVENTS 등)을 추가해 백엔드 없이도 목록→상세 내비게이션 일관성을 확보한다. (2) 프로필 페이지만 예외적으로 실제 Supabase 인증 데이터(getClaims+profiles 테이블, snake_case Database[\"public\"][\"Tables\"][\"profiles\"][\"Row\"] 타입)를 쓰고 나머지 이벤트/참여자 화면은 전부 더미 데이터를 쓴다(사용자와 합의됨) — lib/types/user.ts의 camelCase 더미 UserProfile과 혼용하지 않는다. (3) 이벤트 생성/수정 폼은 components/events/event-form.tsx 하나로 공유해 Zod 스키마 중복을 피한다. (4) 이벤트 상세 페이지는 항상 호스트 뷰로 구현하며 `const isHost = true;` 상수 + 그 상수를 참조하는 몇 개의 JSX 조건부 블록으로 분기점을 좁게 남겨 Task 005가 참여자 뷰를 같은 파일에 추가하기 쉽게 한다. (5) 클립보드 복사/삭제 확인처럼 클라이언트 상호작용이 필요한 조각만 components/events/ 하위 별도 'use client' 컴포넌트로 분리하고 상세/목록 페이지 자체는 서버 컴포넌트로 유지한다(기존 app/(app)/events/[id]/page.tsx의 Suspense+비동기 params 패턴 유지). (6) 이벤트 생성/수정 제출은 실제 Supabase API가 없으므로 Zod 유효성 검사 통과 시 Sonner 토스트 후 더미 상세 페이지로 이동하는 수준까지만 구현하고 `// TODO(Task 009): 실제 Supabase 생성/수정 API 연동` 주석을 남긴다 — 이를 위해 app/layout.tsx에 <Toaster />를 마운트해야 한다. (7) 상태 필터는 Select 같은 클라이언트 위젯 대신 Link 기반 쿼리스트링(?status=) 탭으로 구현해 목록 페이지를 서버 컴포넌트로 유지한다. (8) FAB \"+ 새 이벤트 만들기\" 버튼은 position:fixed가 아니라 sticky로 구현해 MobileViewport의 430px 데스크톱 프레임 안에 올바르게 붙도록 한다. (9) 이 Task에서는 shadcn 컴포넌트를 추가로 설치하지 않는다(Task 003에서 설치된 13개로 충분). (10) 홈 랜딩 교체 시 CLAUDE.md가 보존을 명시한 hasEnvVars 분기(EnvVarWarning/AuthButton)는 그대로 두고 내부 콘텐츠만 Gather 소개로 교체한다. 검증은 npx tsc --noEmit / npm run lint / npm run build 3종이 기본이며, 프로필 페이지는 실제 인증 데이터를 다루므로 추가로 Playwright MCP로 로그인 상태 렌더링을 1회 확인한다.",
+      "summary": "app/page.tsx를 Gather 소개 랜딩으로 교체: nav는 hasEnvVars 분기(EnvVarWarning/AuthButton) 구조를 그대로 유지하고 브랜드명만 'Gather'로 교체, 본문에 서비스 소개 문구(PRD 개요 재사용)+hasEnvVars일 때 GoogleLoginButton CTA, 하단에 3대 기능 카드(Card 컴포넌트 재사용, lucide 아이콘)를 배치. Hero/ConnectSupabaseSteps/SignUpUserSteps/DeployButton import 제거(파일 자체는 삭제하지 않음). app/layout.tsx에 <Toaster />를 ThemeProvider 내부 children 다음 형제로 마운트하고 metadata.title/description을 Gather로 갱신. grep으로 app/page.tsx에 구 브랜딩 문구가 없음을 확인(app/protected/layout.tsx의 동일 문구는 이번 Task 범위 밖이라 그대로 둠). npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:13:34.322Z"
+    },
+    {
+      "id": "8aa6f440-3f8e-4830-8ffc-544ea5f8ba68",
+      "name": "내 이벤트 목록 페이지 UI 구현",
+      "description": "app/(app)/events/page.tsx를 완성한다(F007/F008): 상태별 필터 탭(전체/예정/진행 중/종료, Link 기반 ?status= 쿼리스트링), DUMMY_EVENTS를 EventCard 리스트로 표시(참여자 수는 getDummyParticipantsWithProfiles(event.id).length), 이벤트가 없으면 EmptyState, 우하단 sticky FAB('+ 새 이벤트 만들기' → /events/new).",
+      "notes": "position: fixed를 쓰지 않는다(reflect 단계에서 확정된 제약) — 반드시 sticky로 스크롤 컨테이너 내부에 포함.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ffd1307f-5619-48a1-8974-1283db1e9e11"
+        }
+      ],
+      "createdAt": "2026-10-23T05:10:35.042Z",
+      "updatedAt": "2026-10-23T05:22:09.369Z",
+      "relatedFiles": [
+        {
+          "path": "app/(app)/events/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "목록 페이지 완성"
+        },
+        {
+          "path": "components/common/event-card.tsx",
+          "type": "REFERENCE",
+          "description": "Task 003에서 완성된 이벤트 카드"
+        },
+        {
+          "path": "components/common/empty-state.tsx",
+          "type": "REFERENCE",
+          "description": "빈 상태 UI"
+        },
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "DEPENDENCY",
+          "description": "DUMMY_EVENTS, getDummyParticipantsWithProfiles"
+        }
+      ],
+      "implementationGuide": "서버 컴포넌트 유지. searchParams를 Next.js 15 컨벤션대로 Promise로 받아 await. 필터 탭은 <Link href=\"/events?status=upcoming\">예정</Link> 형태 4개(전체 포함, 전체는 status 파라미터 없음) + 현재 선택된 탭은 Badge/Button variant로 강조. 리스트는 `<div className=\"flex flex-col gap-4 p-4\">`로 EventCard를 Link(href=`/events/${event.id}`)로 감싸 렌더링. 리스트 컨테이너 마지막에 `<Link href=\"/events/new\" className=\"sticky bottom-4 ml-auto flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg\">`(PlusIcon)로 FAB 구현(fixed 금지 — MobileViewport 430px 프레임 밖으로 이탈 방지). 필터링 후 빈 배열이면 EmptyState(title=\"아직 이벤트가 없어요\", action=Link 버튼)를 리스트 자리에 렌더링.",
+      "verificationCriteria": "/events, /events?status=upcoming, /events?status=ongoing, /events?status=ended 4개 경로 모두 200 응답. 각 필터에서 해당 status의 이벤트만 표시됨을 코드 리뷰로 확인. FAB가 sticky로 구현되어 fixed가 없음을 grep으로 확인. npx tsc --noEmit, npm run lint, npm run build 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 004(주최자 모바일 UI/UX 완성)의 최종 목표: Task 003 공통 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/스켈레톤/EmptyState)와 더미 데이터 유틸리티를 활용해 홈 랜딩/이벤트 목록/생성/상세/수정/프로필 6개 페이지를 완성한다. 핵심 설계 결정: (1) lib/dummy-data.ts에 모듈 스코프 고정 데이터셋(DUMMY_EVENTS 등)을 추가해 백엔드 없이도 목록→상세 내비게이션 일관성을 확보한다. (2) 프로필 페이지만 예외적으로 실제 Supabase 인증 데이터(getClaims+profiles 테이블, snake_case Database[\"public\"][\"Tables\"][\"profiles\"][\"Row\"] 타입)를 쓰고 나머지 이벤트/참여자 화면은 전부 더미 데이터를 쓴다(사용자와 합의됨) — lib/types/user.ts의 camelCase 더미 UserProfile과 혼용하지 않는다. (3) 이벤트 생성/수정 폼은 components/events/event-form.tsx 하나로 공유해 Zod 스키마 중복을 피한다. (4) 이벤트 상세 페이지는 항상 호스트 뷰로 구현하며 `const isHost = true;` 상수 + 그 상수를 참조하는 몇 개의 JSX 조건부 블록으로 분기점을 좁게 남겨 Task 005가 참여자 뷰를 같은 파일에 추가하기 쉽게 한다. (5) 클립보드 복사/삭제 확인처럼 클라이언트 상호작용이 필요한 조각만 components/events/ 하위 별도 'use client' 컴포넌트로 분리하고 상세/목록 페이지 자체는 서버 컴포넌트로 유지한다(기존 app/(app)/events/[id]/page.tsx의 Suspense+비동기 params 패턴 유지). (6) 이벤트 생성/수정 제출은 실제 Supabase API가 없으므로 Zod 유효성 검사 통과 시 Sonner 토스트 후 더미 상세 페이지로 이동하는 수준까지만 구현하고 `// TODO(Task 009): 실제 Supabase 생성/수정 API 연동` 주석을 남긴다 — 이를 위해 app/layout.tsx에 <Toaster />를 마운트해야 한다. (7) 상태 필터는 Select 같은 클라이언트 위젯 대신 Link 기반 쿼리스트링(?status=) 탭으로 구현해 목록 페이지를 서버 컴포넌트로 유지한다. (8) FAB \"+ 새 이벤트 만들기\" 버튼은 position:fixed가 아니라 sticky로 구현해 MobileViewport의 430px 데스크톱 프레임 안에 올바르게 붙도록 한다. (9) 이 Task에서는 shadcn 컴포넌트를 추가로 설치하지 않는다(Task 003에서 설치된 13개로 충분). (10) 홈 랜딩 교체 시 CLAUDE.md가 보존을 명시한 hasEnvVars 분기(EnvVarWarning/AuthButton)는 그대로 두고 내부 콘텐츠만 Gather 소개로 교체한다. 검증은 npx tsc --noEmit / npm run lint / npm run build 3종이 기본이며, 프로필 페이지는 실제 인증 데이터를 다루므로 추가로 Playwright MCP로 로그인 상태 렌더링을 1회 확인한다.",
+      "summary": "app/(app)/events/page.tsx 완성. Link 기반 ?status= 4개 탭(전체/예정/진행 중/종료, Badge variant로 활성 강조), DUMMY_EVENTS를 EventCard로 렌더링(참여자 수는 getDummyParticipantsWithProfiles(event.id).length), 빈 결과 시 EmptyState+생성 버튼, 하단 sticky FAB(fixed 미사용, grep으로 확인). 서버 컴포넌트 유지, Next.js 15 searchParams Promise 컨벤션 준수. Playwright로 /events(8개 전부), /events?status=upcoming(1개만 필터링됨) 실제 렌더링 확인. npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:22:09.365Z"
+    },
+    {
+      "id": "4e59406e-42b1-4921-bf80-cff5f57b3dd0",
+      "name": "이벤트 생성/수정 공용 폼 컴포넌트 + 생성 페이지 구현",
+      "description": "components/events/event-form.tsx를 신설해 React Hook Form+Zod로 이벤트 제목(1~50자)/설명(0~500자, optional)/장소(1~100자)/날짜(필수) 입력 폼을 구현하고, mode('create'|'edit')와 defaultValues를 받아 생성/수정 페이지에서 공용으로 쓴다. app/(app)/events/new/page.tsx에서 mode='create'로 사용한다(F001/F009). 제출 성공 시 Sonner 토스트 후 더미 상세 페이지로 이동한다.",
+      "notes": "Textarea가 설치되어 있지 않으면 새로 shadcn 컴포넌트를 추가하지 않고 input으로 대체한다(이번 Task는 신규 shadcn 설치 범위 아님). zodResolver는 @hookform/resolvers/zod에서 import(Task 003에서 이미 설치됨).",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ffd1307f-5619-48a1-8974-1283db1e9e11"
+        },
+        {
+          "taskId": "585dd446-cc52-4968-900b-b5582e772c21"
+        }
+      ],
+      "createdAt": "2026-10-23T05:10:35.042Z",
+      "updatedAt": "2026-10-23T05:24:59.335Z",
+      "relatedFiles": [
+        {
+          "path": "components/events/event-form.tsx",
+          "type": "CREATE",
+          "description": "생성/수정 공용 폼"
+        },
+        {
+          "path": "app/(app)/events/new/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "생성 페이지에서 EventForm(mode='create') 사용"
+        },
+        {
+          "path": "components/ui/form.tsx",
+          "type": "DEPENDENCY",
+          "description": "Task 003에서 설치된 Form 프리미티브"
+        },
+        {
+          "path": "components/ui/sonner.tsx",
+          "type": "DEPENDENCY",
+          "description": "토스트 표시"
+        },
+        {
+          "path": "lib/types/api.ts",
+          "type": "REFERENCE",
+          "description": "CreateEventInput 필드 구성 참고"
+        },
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "DEPENDENCY",
+          "description": "DUMMY_EVENTS[0] 등 이동 대상 조회"
+        }
+      ],
+      "implementationGuide": "components/events/event-form.tsx ('use client'):\n```\nconst eventFormSchema = z.object({\n  title: z.string().min(1, '제목을 입력하세요').max(50),\n  description: z.string().max(500).optional(),\n  location: z.string().min(1, '장소를 입력하세요').max(100),\n  eventDate: z.string().min(1, '날짜를 선택하세요'),\n});\nexport type EventFormValues = z.infer<typeof eventFormSchema>;\nexport function EventForm({ mode, defaultValues, onSubmitSuccess }: { mode: 'create' | 'edit'; defaultValues?: Partial<EventFormValues>; onSubmitSuccess: (values: EventFormValues) => void }) { ... }\n```\nshadcn Form(components/ui/form.tsx)의 Form/FormField/FormItem/FormLabel/FormControl/FormMessage + Input/Textarea(Textarea 없으면 Input으로 대체, 별도 설치 불필요하면 input으로 처리)로 필드 구성. 커버 이미지는 실제 업로드 대신 '커버 이미지 업로드는 추후 지원됩니다 (Task 009)' 안내문만 표시(input 없음). 제출 버튼 텍스트는 mode에 따라 '이벤트 생성'/'수정 완료'.\napp/(app)/events/new/page.tsx ('use client' 래퍼 또는 EventForm 자체가 client이므로 page는 그대로 server):\n```\nexport default function EventNewPage() {\n  return <EventNewForm />; // EventForm을 감싸는 작은 client 래퍼 컴포넌트에서 toast+router.push 처리\n}\n```\n제출 핸들러에서 `toast.success('이벤트가 생성되었습니다')` 후 `router.push(`/events/${DUMMY_EVENTS[0].id}`)`. 코드에 `// TODO(Task 009): 실제 Supabase 이벤트 생성 API 연동` 주석을 남긴다.",
+      "verificationCriteria": "필수 필드를 비우고 제출 시 Zod 에러 메시지가 FormMessage로 표시됨(코드 리뷰). 유효한 값 제출 시 토스트가 뜨고 /events/[id]로 이동함을 코드 리뷰로 확인. npx tsc --noEmit, npm run lint, npm run build 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 004(주최자 모바일 UI/UX 완성)의 최종 목표: Task 003 공통 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/스켈레톤/EmptyState)와 더미 데이터 유틸리티를 활용해 홈 랜딩/이벤트 목록/생성/상세/수정/프로필 6개 페이지를 완성한다. 핵심 설계 결정: (1) lib/dummy-data.ts에 모듈 스코프 고정 데이터셋(DUMMY_EVENTS 등)을 추가해 백엔드 없이도 목록→상세 내비게이션 일관성을 확보한다. (2) 프로필 페이지만 예외적으로 실제 Supabase 인증 데이터(getClaims+profiles 테이블, snake_case Database[\"public\"][\"Tables\"][\"profiles\"][\"Row\"] 타입)를 쓰고 나머지 이벤트/참여자 화면은 전부 더미 데이터를 쓴다(사용자와 합의됨) — lib/types/user.ts의 camelCase 더미 UserProfile과 혼용하지 않는다. (3) 이벤트 생성/수정 폼은 components/events/event-form.tsx 하나로 공유해 Zod 스키마 중복을 피한다. (4) 이벤트 상세 페이지는 항상 호스트 뷰로 구현하며 `const isHost = true;` 상수 + 그 상수를 참조하는 몇 개의 JSX 조건부 블록으로 분기점을 좁게 남겨 Task 005가 참여자 뷰를 같은 파일에 추가하기 쉽게 한다. (5) 클립보드 복사/삭제 확인처럼 클라이언트 상호작용이 필요한 조각만 components/events/ 하위 별도 'use client' 컴포넌트로 분리하고 상세/목록 페이지 자체는 서버 컴포넌트로 유지한다(기존 app/(app)/events/[id]/page.tsx의 Suspense+비동기 params 패턴 유지). (6) 이벤트 생성/수정 제출은 실제 Supabase API가 없으므로 Zod 유효성 검사 통과 시 Sonner 토스트 후 더미 상세 페이지로 이동하는 수준까지만 구현하고 `// TODO(Task 009): 실제 Supabase 생성/수정 API 연동` 주석을 남긴다 — 이를 위해 app/layout.tsx에 <Toaster />를 마운트해야 한다. (7) 상태 필터는 Select 같은 클라이언트 위젯 대신 Link 기반 쿼리스트링(?status=) 탭으로 구현해 목록 페이지를 서버 컴포넌트로 유지한다. (8) FAB \"+ 새 이벤트 만들기\" 버튼은 position:fixed가 아니라 sticky로 구현해 MobileViewport의 430px 데스크톱 프레임 안에 올바르게 붙도록 한다. (9) 이 Task에서는 shadcn 컴포넌트를 추가로 설치하지 않는다(Task 003에서 설치된 13개로 충분). (10) 홈 랜딩 교체 시 CLAUDE.md가 보존을 명시한 hasEnvVars 분기(EnvVarWarning/AuthButton)는 그대로 두고 내부 콘텐츠만 Gather 소개로 교체한다. 검증은 npx tsc --noEmit / npm run lint / npm run build 3종이 기본이며, 프로필 페이지는 실제 인증 데이터를 다루므로 추가로 Playwright MCP로 로그인 상태 렌더링을 1회 확인한다.",
+      "summary": "components/events/event-form.tsx(React Hook Form+zodResolver, title/description/location/eventDate Zod 스키마, mode prop으로 버튼 텍스트 분기)와 components/events/event-new-form.tsx('use client' 래퍼, 제출 성공 시 toast.success+router.push(`/events/${DUMMY_EVENTS[0].id}`), TODO(Task 009) 주석), app/(app)/events/new/page.tsx(EventNewForm 렌더)를 구현. Playwright로 실제 동작 확인: 빈 값 제출 시 제목/장소/날짜 3개 필드에 Zod 에러 메시지가 FormMessage로 렌더링됨, 유효값 입력 후 제출 시 토스트 없이도 실제로 /events/[id](DUMMY_EVENTS[0])로 정상 이동 확인. npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:24:59.333Z"
+    },
+    {
+      "id": "42771006-bdb1-4b29-b141-eda8cea3a387",
+      "name": "이벤트 상세 페이지 - 호스트 뷰 구현",
+      "description": "app/(app)/events/[id]/page.tsx를 완성한다(F002/F003/F005/F006/F008/F009): getDummyEventById(id)로 조회(없으면 notFound()), 이벤트 정보(제목/날짜/장소/상태뱃지), 참여자 목록(ParticipantCard), 초대 링크 복사 버튼(실제 클립보드 동작), 비활성 카카오톡 공유 버튼(TODO), 수정/삭제 버튼(항상 호스트로 간주 — isHost=true 상수).",
+      "notes": "notFound()는 next/navigation에서 import. 카카오톡 공유 버튼은 Button disabled + title='Task 009에서 지원 예정' 정도로 최소 구현.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ffd1307f-5619-48a1-8974-1283db1e9e11"
+        }
+      ],
+      "createdAt": "2026-10-23T05:10:35.042Z",
+      "updatedAt": "2026-10-23T05:23:22.258Z",
+      "relatedFiles": [
+        {
+          "path": "app/(app)/events/[id]/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "호스트 뷰 상세 페이지 완성"
+        },
+        {
+          "path": "components/events/copy-invite-link-button.tsx",
+          "type": "CREATE",
+          "description": "초대 링크 클립보드 복사"
+        },
+        {
+          "path": "components/events/delete-event-dialog.tsx",
+          "type": "CREATE",
+          "description": "삭제 확인 다이얼로그"
+        },
+        {
+          "path": "components/common/participant-card.tsx",
+          "type": "REFERENCE",
+          "description": "참여자 목록 렌더링"
+        },
+        {
+          "path": "components/common/event-status-badge.tsx",
+          "type": "REFERENCE",
+          "description": "상태 뱃지"
+        },
+        {
+          "path": "components/ui/dialog.tsx",
+          "type": "DEPENDENCY",
+          "description": "Task 003에서 설치된 Dialog"
+        },
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "DEPENDENCY",
+          "description": "getDummyEventById, getDummyParticipantsWithProfiles"
+        }
+      ],
+      "implementationGuide": "1) components/events/copy-invite-link-button.tsx ('use client'): props { inviteCode: string }. `const url = `${window.location.origin}/join/${inviteCode}`;` 버튼 클릭 시 `navigator.clipboard.writeText(url)` 후 `toast.success('초대 링크가 복사되었습니다')`.\n2) components/events/delete-event-dialog.tsx ('use client'): shadcn Dialog로 삭제 확인(DialogTrigger=Button variant destructive '이벤트 삭제', DialogContent에 확인/취소). 확인 클릭 시 `toast.success('이벤트가 삭제되었습니다')` 후 `router.push('/events')`. `// TODO(Task 009): 실제 Supabase 삭제 API 연동` 주석.\n3) app/(app)/events/[id]/page.tsx: 기존 Suspense+async EventDetailContent({ params }) 패턴 유지. `const event = getDummyEventById(id); if (!event) notFound();`. `const isHost = true; // TODO(Task 005): 실제 참여자 role 비교로 교체`. getDummyParticipantsWithProfiles(event.id).map(({ participant, profile }) => <ParticipantCard key={participant.id} participant={participant} profile={profile} />). isHost 블록 안에 '이벤트 수정'(Link href=`/events/${id}/edit`) 버튼 + DeleteEventDialog, CopyInviteLinkButton(언제나 표시 — 공유 제한은 Task 005의 참여자 분기에서 처리).",
+      "verificationCriteria": "존재하는 더미 id로 접근 시 참여자 목록/상태뱃지/수정·삭제 버튼이 모두 렌더링됨을 코드 리뷰로 확인. 존재하지 않는 id 접근 시 notFound() 호출 확인. 클립보드 복사 버튼이 navigator.clipboard.writeText를 호출함을 코드 리뷰로 확인. npx tsc --noEmit, npm run lint, npm run build 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 004(주최자 모바일 UI/UX 완성)의 최종 목표: Task 003 공통 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/스켈레톤/EmptyState)와 더미 데이터 유틸리티를 활용해 홈 랜딩/이벤트 목록/생성/상세/수정/프로필 6개 페이지를 완성한다. 핵심 설계 결정: (1) lib/dummy-data.ts에 모듈 스코프 고정 데이터셋(DUMMY_EVENTS 등)을 추가해 백엔드 없이도 목록→상세 내비게이션 일관성을 확보한다. (2) 프로필 페이지만 예외적으로 실제 Supabase 인증 데이터(getClaims+profiles 테이블, snake_case Database[\"public\"][\"Tables\"][\"profiles\"][\"Row\"] 타입)를 쓰고 나머지 이벤트/참여자 화면은 전부 더미 데이터를 쓴다(사용자와 합의됨) — lib/types/user.ts의 camelCase 더미 UserProfile과 혼용하지 않는다. (3) 이벤트 생성/수정 폼은 components/events/event-form.tsx 하나로 공유해 Zod 스키마 중복을 피한다. (4) 이벤트 상세 페이지는 항상 호스트 뷰로 구현하며 `const isHost = true;` 상수 + 그 상수를 참조하는 몇 개의 JSX 조건부 블록으로 분기점을 좁게 남겨 Task 005가 참여자 뷰를 같은 파일에 추가하기 쉽게 한다. (5) 클립보드 복사/삭제 확인처럼 클라이언트 상호작용이 필요한 조각만 components/events/ 하위 별도 'use client' 컴포넌트로 분리하고 상세/목록 페이지 자체는 서버 컴포넌트로 유지한다(기존 app/(app)/events/[id]/page.tsx의 Suspense+비동기 params 패턴 유지). (6) 이벤트 생성/수정 제출은 실제 Supabase API가 없으므로 Zod 유효성 검사 통과 시 Sonner 토스트 후 더미 상세 페이지로 이동하는 수준까지만 구현하고 `// TODO(Task 009): 실제 Supabase 생성/수정 API 연동` 주석을 남긴다 — 이를 위해 app/layout.tsx에 <Toaster />를 마운트해야 한다. (7) 상태 필터는 Select 같은 클라이언트 위젯 대신 Link 기반 쿼리스트링(?status=) 탭으로 구현해 목록 페이지를 서버 컴포넌트로 유지한다. (8) FAB \"+ 새 이벤트 만들기\" 버튼은 position:fixed가 아니라 sticky로 구현해 MobileViewport의 430px 데스크톱 프레임 안에 올바르게 붙도록 한다. (9) 이 Task에서는 shadcn 컴포넌트를 추가로 설치하지 않는다(Task 003에서 설치된 13개로 충분). (10) 홈 랜딩 교체 시 CLAUDE.md가 보존을 명시한 hasEnvVars 분기(EnvVarWarning/AuthButton)는 그대로 두고 내부 콘텐츠만 Gather 소개로 교체한다. 검증은 npx tsc --noEmit / npm run lint / npm run build 3종이 기본이며, 프로필 페이지는 실제 인증 데이터를 다루므로 추가로 Playwright MCP로 로그인 상태 렌더링을 1회 확인한다.",
+      "summary": "app/(app)/events/[id]/page.tsx 완성, components/events/copy-invite-link-button.tsx(navigator.clipboard.writeText+toast)와 delete-event-dialog.tsx(shadcn Dialog, 확인 시 toast+router.push('/events'), TODO(Task009) 주석) 신설. getDummyEventById(id)로 조회 후 없으면 notFound(). isHost=true 상수(TODO(Task 005) 주석)로 수정/삭제 버튼 항상 노출. ParticipantCard로 참여자 목록(getDummyParticipantsWithProfiles) 렌더링, EventStatusBadge로 상태 표시, 카카오톡 버튼은 disabled+title 안내. Playwright로 실제 더미 id 접근 시 참여자 5명(호스트 뱃지 포함)/상태뱃지/초대복사·카카오(비활성)/수정·삭제 버튼이 모두 렌더링됨을 확인, 존재하지 않는 id는 실제 404 페이지로 연결됨을 확인. npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:23:22.256Z"
+    },
+    {
+      "id": "52c6cd28-52aa-4091-bfba-4c38cc8f3843",
+      "name": "이벤트 수정 페이지 UI 구현",
+      "description": "app/(app)/events/[id]/edit/page.tsx를 완성한다(F001/F006/F009): getDummyEventById(id)로 기존 값을 조회해 components/events/event-form.tsx(mode='edit')에 defaultValues로 주입, 제출 성공 시 토스트 후 상세 페이지로 복귀.",
+      "notes": "event-form.tsx는 이전 작업('이벤트 생성/수정 공용 폼 컴포넌트...')에서 이미 mode prop을 지원하도록 설계되었으므로 새 UI를 만들지 않고 그대로 재사용한다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ffd1307f-5619-48a1-8974-1283db1e9e11"
+        },
+        {
+          "taskId": "4e59406e-42b1-4921-bf80-cff5f57b3dd0"
+        }
+      ],
+      "createdAt": "2026-10-23T05:10:35.042Z",
+      "updatedAt": "2026-10-23T05:26:30.919Z",
+      "relatedFiles": [
+        {
+          "path": "app/(app)/events/[id]/edit/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "수정 페이지 완성"
+        },
+        {
+          "path": "components/events/event-form.tsx",
+          "type": "DEPENDENCY",
+          "description": "선행 작업에서 생성된 공용 폼"
+        },
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "DEPENDENCY",
+          "description": "getDummyEventById"
+        }
+      ],
+      "implementationGuide": "기존 Suspense+async EventEditContent({ params }) 패턴 유지. `const event = getDummyEventById(id); if (!event) notFound();`. EventForm에 defaultValues={{ title: event.title, description: event.description ?? undefined, location: event.location, eventDate: event.eventDate }} 전달. 제출 핸들러에서 `toast.success('수정 완료되었습니다')` 후 `router.push(`/events/${id}`)`. `// TODO(Task 009): 실제 Supabase 수정 API 연동` 주석.",
+      "verificationCriteria": "존재하는 더미 id로 접근 시 폼에 기존 제목/장소/날짜가 채워져 렌더링됨을 코드 리뷰로 확인. 존재하지 않는 id는 notFound(). npx tsc --noEmit, npm run lint, npm run build 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 004(주최자 모바일 UI/UX 완성)의 최종 목표: Task 003 공통 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/스켈레톤/EmptyState)와 더미 데이터 유틸리티를 활용해 홈 랜딩/이벤트 목록/생성/상세/수정/프로필 6개 페이지를 완성한다. 핵심 설계 결정: (1) lib/dummy-data.ts에 모듈 스코프 고정 데이터셋(DUMMY_EVENTS 등)을 추가해 백엔드 없이도 목록→상세 내비게이션 일관성을 확보한다. (2) 프로필 페이지만 예외적으로 실제 Supabase 인증 데이터(getClaims+profiles 테이블, snake_case Database[\"public\"][\"Tables\"][\"profiles\"][\"Row\"] 타입)를 쓰고 나머지 이벤트/참여자 화면은 전부 더미 데이터를 쓴다(사용자와 합의됨) — lib/types/user.ts의 camelCase 더미 UserProfile과 혼용하지 않는다. (3) 이벤트 생성/수정 폼은 components/events/event-form.tsx 하나로 공유해 Zod 스키마 중복을 피한다. (4) 이벤트 상세 페이지는 항상 호스트 뷰로 구현하며 `const isHost = true;` 상수 + 그 상수를 참조하는 몇 개의 JSX 조건부 블록으로 분기점을 좁게 남겨 Task 005가 참여자 뷰를 같은 파일에 추가하기 쉽게 한다. (5) 클립보드 복사/삭제 확인처럼 클라이언트 상호작용이 필요한 조각만 components/events/ 하위 별도 'use client' 컴포넌트로 분리하고 상세/목록 페이지 자체는 서버 컴포넌트로 유지한다(기존 app/(app)/events/[id]/page.tsx의 Suspense+비동기 params 패턴 유지). (6) 이벤트 생성/수정 제출은 실제 Supabase API가 없으므로 Zod 유효성 검사 통과 시 Sonner 토스트 후 더미 상세 페이지로 이동하는 수준까지만 구현하고 `// TODO(Task 009): 실제 Supabase 생성/수정 API 연동` 주석을 남긴다 — 이를 위해 app/layout.tsx에 <Toaster />를 마운트해야 한다. (7) 상태 필터는 Select 같은 클라이언트 위젯 대신 Link 기반 쿼리스트링(?status=) 탭으로 구현해 목록 페이지를 서버 컴포넌트로 유지한다. (8) FAB \"+ 새 이벤트 만들기\" 버튼은 position:fixed가 아니라 sticky로 구현해 MobileViewport의 430px 데스크톱 프레임 안에 올바르게 붙도록 한다. (9) 이 Task에서는 shadcn 컴포넌트를 추가로 설치하지 않는다(Task 003에서 설치된 13개로 충분). (10) 홈 랜딩 교체 시 CLAUDE.md가 보존을 명시한 hasEnvVars 분기(EnvVarWarning/AuthButton)는 그대로 두고 내부 콘텐츠만 Gather 소개로 교체한다. 검증은 npx tsc --noEmit / npm run lint / npm run build 3종이 기본이며, 프로필 페이지는 실제 인증 데이터를 다루므로 추가로 Playwright MCP로 로그인 상태 렌더링을 1회 확인한다.",
+      "summary": "app/(app)/events/[id]/edit/page.tsx 완성. getDummyEventById(id)로 조회 후 없으면 notFound(). components/events/event-edit-form.tsx('use client' 래퍼)가 ISO eventDate를 datetime-local 입력 형식으로 변환(toDatetimeLocalValue)해 공용 EventForm(mode='edit')에 defaultValues로 주입, 제출 성공 시 toast.success+router.push(`/events/${eventId}`), TODO(Task 009) 주석. 새 UI를 만들지 않고 Task 4의 event-form.tsx를 그대로 재사용. Playwright로 실제 더미 id 접근 시 기존 제목/장소/날짜가 폼에 정확히 채워짐을 확인, 수정 완료 클릭 시 실제로 해당 이벤트 상세 페이지로 복귀함을 확인, 존재하지 않는 id는 실제 404로 연결됨을 확인. npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:26:30.917Z"
+    },
+    {
+      "id": "c186a01e-7004-4787-bc50-51ac709e4602",
+      "name": "프로필 페이지 UI 구현 (실제 인증 데이터 사용)",
+      "description": "app/(app)/profile/page.tsx를 완성한다(F011). 사용자와 합의한 대로 더미 데이터가 아니라 실제 Supabase 인증 정보를 사용한다: supabase.auth.getClaims()로 로그인 사용자를 확인하고 profiles 테이블(avatar_url, full_name, email, created_at)을 조회해 프로필 사진/이름/이메일/가입일을 표시, 기존 LogoutButton을 재사용한다. 이름 수정 UI는 두지만 실제 저장은 하지 않는다(로컬 state만 반영, 저장 버튼은 토스트로 '저장은 추후 지원됩니다' 안내).",
+      "notes": "lib/types/user.ts의 더미 UserProfile(camelCase)과 혼용하지 않는다 — Database['public']['Tables']['profiles']['Row'] 타입을 그대로 사용(snake_case). lib/supabase/server.ts의 createClient()는 매 요청마다 새로 생성해야 한다(CLAUDE.md Fluid compute 지침).",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T05:10:35.042Z",
+      "updatedAt": "2026-10-23T05:21:02.418Z",
+      "relatedFiles": [
+        {
+          "path": "app/(app)/profile/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "프로필 페이지 완성"
+        },
+        {
+          "path": "lib/supabase/server.ts",
+          "type": "REFERENCE",
+          "description": "서버 컴포넌트용 Supabase 클라이언트 생성 패턴"
+        },
+        {
+          "path": "lib/supabase/database.types.ts",
+          "type": "REFERENCE",
+          "description": "profiles 테이블 Row 타입(변경 금지)"
+        },
+        {
+          "path": "components/logout-button.tsx",
+          "type": "REFERENCE",
+          "description": "기존 로그아웃 버튼 재사용"
+        },
+        {
+          "path": "components/ui/avatar.tsx",
+          "type": "DEPENDENCY",
+          "description": "Task 003에서 설치된 Avatar"
+        },
+        {
+          "path": "components/auth-button.tsx",
+          "type": "REFERENCE",
+          "description": "getClaims() 사용 패턴 참고"
+        }
+      ],
+      "implementationGuide": "서버 컴포넌트: `const supabase = await createClient(); const { data } = await supabase.auth.getClaims(); const userId = data?.claims?.sub; const { data: profile } = await supabase.from('profiles').select('avatar_url, full_name, email, created_at').eq('id', userId).single();`. Avatar(components/ui/avatar.tsx)로 avatar_url 표시(AvatarFallback은 이메일 첫 글자). 이름 수정은 'use client' 하위 컴포넌트(components/events/ 바깥, 예: 인라인 작은 컴포넌트 또는 profile 전용 파일 없이 페이지 내 로컬 client 컴포넌트)로 input+useState, 저장 버튼 클릭 시 `toast('저장은 추후 지원됩니다')`만 호출. 이메일은 읽기 전용 텍스트. 가입일은 `new Date(profile.created_at).toLocaleDateString('ko-KR')`. 하단에 기존 `<LogoutButton />` 배치. userId가 없으면(이론상 proxy.ts가 보호하므로 발생하지 않지만) notFound() 또는 안내 문구 처리.",
+      "verificationCriteria": "npx tsc --noEmit, npm run lint, npm run build 통과. Playwright MCP로 실제 Google 로그인 상태에서 /profile에 접속해 이름/이메일/가입일/로그아웃 버튼이 정상 렌더링되는지 1회 확인(ROADMAP상 이 Task는 Playwright 필수 대상이 아니지만 실제 인증 데이터를 다루므로 최소 확인).",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 004(주최자 모바일 UI/UX 완성)의 최종 목표: Task 003 공통 컴포넌트(EventCard/EventStatusBadge/ParticipantCard/스켈레톤/EmptyState)와 더미 데이터 유틸리티를 활용해 홈 랜딩/이벤트 목록/생성/상세/수정/프로필 6개 페이지를 완성한다. 핵심 설계 결정: (1) lib/dummy-data.ts에 모듈 스코프 고정 데이터셋(DUMMY_EVENTS 등)을 추가해 백엔드 없이도 목록→상세 내비게이션 일관성을 확보한다. (2) 프로필 페이지만 예외적으로 실제 Supabase 인증 데이터(getClaims+profiles 테이블, snake_case Database[\"public\"][\"Tables\"][\"profiles\"][\"Row\"] 타입)를 쓰고 나머지 이벤트/참여자 화면은 전부 더미 데이터를 쓴다(사용자와 합의됨) — lib/types/user.ts의 camelCase 더미 UserProfile과 혼용하지 않는다. (3) 이벤트 생성/수정 폼은 components/events/event-form.tsx 하나로 공유해 Zod 스키마 중복을 피한다. (4) 이벤트 상세 페이지는 항상 호스트 뷰로 구현하며 `const isHost = true;` 상수 + 그 상수를 참조하는 몇 개의 JSX 조건부 블록으로 분기점을 좁게 남겨 Task 005가 참여자 뷰를 같은 파일에 추가하기 쉽게 한다. (5) 클립보드 복사/삭제 확인처럼 클라이언트 상호작용이 필요한 조각만 components/events/ 하위 별도 'use client' 컴포넌트로 분리하고 상세/목록 페이지 자체는 서버 컴포넌트로 유지한다(기존 app/(app)/events/[id]/page.tsx의 Suspense+비동기 params 패턴 유지). (6) 이벤트 생성/수정 제출은 실제 Supabase API가 없으므로 Zod 유효성 검사 통과 시 Sonner 토스트 후 더미 상세 페이지로 이동하는 수준까지만 구현하고 `// TODO(Task 009): 실제 Supabase 생성/수정 API 연동` 주석을 남긴다 — 이를 위해 app/layout.tsx에 <Toaster />를 마운트해야 한다. (7) 상태 필터는 Select 같은 클라이언트 위젯 대신 Link 기반 쿼리스트링(?status=) 탭으로 구현해 목록 페이지를 서버 컴포넌트로 유지한다. (8) FAB \"+ 새 이벤트 만들기\" 버튼은 position:fixed가 아니라 sticky로 구현해 MobileViewport의 430px 데스크톱 프레임 안에 올바르게 붙도록 한다. (9) 이 Task에서는 shadcn 컴포넌트를 추가로 설치하지 않는다(Task 003에서 설치된 13개로 충분). (10) 홈 랜딩 교체 시 CLAUDE.md가 보존을 명시한 hasEnvVars 분기(EnvVarWarning/AuthButton)는 그대로 두고 내부 콘텐츠만 Gather 소개로 교체한다. 검증은 npx tsc --noEmit / npm run lint / npm run build 3종이 기본이며, 프로필 페이지는 실제 인증 데이터를 다루므로 추가로 Playwright MCP로 로그인 상태 렌더링을 1회 확인한다.",
+      "summary": "app/(app)/profile/page.tsx를 실제 Supabase 인증 데이터로 완성. createClient()(서버, 요청마다 새로 생성)로 getClaims() 후 claims.sub로 profiles 테이블(avatar_url, full_name, email, created_at)을 select, Avatar(size=\\\"lg\\\")로 사진/이니셜 폴백 표시, 이메일 읽기전용, 가입일 ko-KR 포맷. 이름 수정은 components/profile/profile-name-editor.tsx('use client', useState+Input+Button)로 분리해 저장 시 toast만 호출(TODO(Task 011) 주석, 실제 저장 없음). 기존 LogoutButton 재사용. lib/types/user.ts의 더미 UserProfile과는 혼용하지 않음(snake_case profiles Row 타입 직접 사용). npx tsc --noEmit, npm run lint, npm run build 통과. Playwright MCP로 실제 Google 로그인(whfkddk@gmail.com) 상태에서 /profile 접속 확인: 이메일/가입일(2026년 10월 21일)/아바타 이니셜(\"W\")/이름 입력란/저장 버튼/Logout 버튼이 모두 정상 렌더링되고 콘솔 에러 없음.",
+      "completedAt": "2026-10-23T05:21:02.416Z"
+    },
+    {
+      "id": "8b20d67d-5f4a-43f1-b04d-3d3e93618205",
+      "name": "데모 역할 토글 인프라 구축 (쿠키 + 프로필 스위처)",
+      "description": "쿠키 기반 데모 역할 토글의 기반을 구축한다. lib/demo-role.ts(역할 읽기, getDemoViewerRole)와 lib/demo-role-actions.ts('use server', 역할 쓰기+리다이렉트)를 분리 생성하고, components/profile/demo-role-switcher.tsx(현재 역할 표시+전환 폼)를 만들어 app/(app)/profile/page.tsx에 추가한다. 쿠키가 없으면 기본값은 'host'로 Task 004의 기존 동작과 100% 호환되어야 한다.",
+      "notes": "이 쿠키는 민감 정보가 아니므로 httpOnly 불필요(기본값 사용). profiles 테이블이나 실제 인증 쿠키는 건드리지 않는다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T05:35:28.684Z",
+      "updatedAt": "2026-10-23T05:37:29.424Z",
+      "relatedFiles": [
+        {
+          "path": "lib/demo-role.ts",
+          "type": "CREATE",
+          "description": "데모 역할 읽기 헬퍼"
+        },
+        {
+          "path": "lib/demo-role-actions.ts",
+          "type": "CREATE",
+          "description": "데모 역할 쓰기 Server Action"
+        },
+        {
+          "path": "components/profile/demo-role-switcher.tsx",
+          "type": "CREATE",
+          "description": "역할 전환 UI"
+        },
+        {
+          "path": "app/(app)/profile/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "DemoRoleSwitcher 추가"
+        }
+      ],
+      "implementationGuide": "1) lib/demo-role.ts:\n```\nimport { cookies } from 'next/headers';\nexport type ViewerRole = 'host' | 'participant';\nexport const DEMO_ROLE_COOKIE = 'gather-demo-role';\nexport async function getDemoViewerRole(): Promise<ViewerRole> {\n  const store = await cookies();\n  return store.get(DEMO_ROLE_COOKIE)?.value === 'participant' ? 'participant' : 'host';\n}\n```\n2) lib/demo-role-actions.ts:\n```\n'use server';\nimport { cookies } from 'next/headers';\nimport { redirect } from 'next/navigation';\nimport { DEMO_ROLE_COOKIE, type ViewerRole } from '@/lib/demo-role';\nexport async function setDemoViewerRole(role: ViewerRole) {\n  const store = await cookies();\n  store.set(DEMO_ROLE_COOKIE, role, { path: '/' });\n  redirect('/events');\n}\n```\n3) components/profile/demo-role-switcher.tsx(서버 컴포넌트, 'use client' 불필요 — 폼 action만 사용):\n```\nimport { getDemoViewerRole } from '@/lib/demo-role';\nimport { setDemoViewerRole } from '@/lib/demo-role-actions';\nimport { Button } from '@/components/ui/button';\nexport async function DemoRoleSwitcher() {\n  const role = await getDemoViewerRole();\n  return (\n    <div className=\"flex flex-col gap-2 rounded-lg border p-4\">\n      <span className=\"text-xs text-muted-foreground\">데모 보기 전환 (Phase 2 전용)</span>\n      <div className=\"flex gap-2\">\n        <form action={setDemoViewerRole.bind(null, 'host')}>\n          <Button type=\"submit\" variant={role === 'host' ? 'default' : 'outline'}>호스트로 보기</Button>\n        </form>\n        <form action={setDemoViewerRole.bind(null, 'participant')}>\n          <Button type=\"submit\" variant={role === 'participant' ? 'default' : 'outline'}>참여자로 보기</Button>\n        </form>\n      </div>\n    </div>\n  );\n}\n```\n4) app/(app)/profile/page.tsx의 ProfileContent에 `<DemoRoleSwitcher />`를 LogoutButton 위에 추가.",
+      "verificationCriteria": "쿠키가 없는 최초 상태에서 getDemoViewerRole()이 'host'를 반환함(코드 리뷰). 프로필 페이지에서 '참여자로 보기' 클릭 시 /events로 리다이렉트되고 쿠키가 설정됨을 Playwright로 확인. npx tsc --noEmit, npm run lint, npm run build 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 005(참여자 모바일 UI/UX 완성)의 최종 목표: Task 004가 \"항상 호스트\"로 완성한 /events, /events/[id], 하단 내비게이션에 참여자 뷰 분기를 추가하고 초대 링크 참여 페이지(/join/[invite_code])를 완성한다. 핵심 설계 결정: (1) 호스트/참여자는 PRD 설계상 동일 라우트를 공유하며 역할에 따라 조건부 렌더링되는데, 실제 인증/권한 시스템은 Phase 3(Task 008/010)에서 완성되므로 사용자와 합의한 대로 쿠키 기반 데모 역할 토글(gather-demo-role: host|participant, 기본값 host로 Task004 기존 동작과 100% 호환)을 쓴다. (2) 역할을 \"읽는\" lib/demo-role.ts(getDemoViewerRole, 순수 조회)와 \"쓰는\" lib/demo-role-actions.ts(\"use server\" Server Action, 쿠키 설정+리다이렉트)를 분리해, 역할을 소비하는 서버 컴포넌트(app/(app)/layout.tsx, events/page.tsx, events/[id]/page.tsx)가 쓰기 로직을 신경 쓰지 않게 한다. 토글 UI는 profile 페이지에 둔다. (3) components/layout/mobile-bottom-nav.tsx는 'use client'라 쿠키를 직접 읽지 않고 app/(app)/layout.tsx(서버)가 role을 prop으로 내려준다. (4) events/[id]/page.tsx의 `const isHost = true; // TODO(Task 005)`를 `const role = await getDemoViewerRole(); const isHost = role === 'host';`로 교체하고, 기존에 isHost 블록 밖에 있던 CopyInviteLinkButton/카카오 버튼(초대 공유)을 isHost 블록 안으로 옮겨 PRD의 \"참여자는 공유 기능 제한\"을 만족시킨다 — 참여자 목록(ParticipantCard)은 원래부터 읽기 전용이라 그대로 둔다. (5) events/page.tsx는 role==='participant'면 제목을 \"참여 중인 이벤트\"로 바꾸고 FAB를 숨긴다(더미 데이터 한계상 이벤트 목록 자체는 호스트/참여자 공통으로 DUMMY_EVENTS 전체를 보여줌 — 주석으로 명시). (6) /join/[invite_code]는 역할 토글과 무관한 완전히 별도의 공개 플로우로, lib/dummy-data.ts에 getDummyEventByInviteCode(code) 헬퍼를 추가해 이벤트를 조회하고(없으면 notFound()), 주최자 정보는 getDummyParticipantsWithProfiles(event.id)에서 role==='host'인 항목으로 표시하며, 실제 supabase.auth.getClaims()로 로그인 여부를 확인해 비로그인이면 GoogleLoginButton(신규 선택적 next prop으로 로그인 후 같은 join 페이지로 복귀), 로그인 상태면 '참여 확인' 버튼(클릭 시 toast+router.push로 이벤트 상세 이동, 실제 참여 처리는 TODO(Task 010))을 보여준다. GoogleLoginButton의 next prop은 옵셔널이라 기존 login-form.tsx/sign-up-form.tsx 호출부(prop 없이 사용 중, grep으로 확인됨)는 수정하지 않는다. (7) 새 shadcn 컴포넌트는 설치하지 않는다(기존 13개로 충분). 검증은 npx tsc --noEmit / npm run lint / npm run build 3종 + Playwright로 쿠키 전환 전후 실제 UI 차이와 join 페이지 더미 조회를 확인한다.",
+      "summary": "lib/demo-role.ts(ViewerRole, getDemoViewerRole — 쿠키 없으면 기본값 'host')와 lib/demo-role-actions.ts('use server', setDemoViewerRole — 쿠키 설정+'/events' 리다이렉트)를 분리 생성. components/profile/demo-role-switcher.tsx(서버 컴포넌트, form action으로 Server Action 호출, 현재 역할 variant 강조)를 app/(app)/profile/page.tsx의 LogoutButton 위에 추가. Playwright로 실제 동작 확인: 프로필 페이지에서 '참여자로 보기' 클릭 시 /events로 리다이렉트되고 document.cookie에 gather-demo-role=participant가 실제로 설정됨을 확인. npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:37:29.422Z"
+    },
+    {
+      "id": "1449c525-8300-49f2-8466-35414ad9c6c7",
+      "name": "참여자 전용 네비게이션 바 구현",
+      "description": "components/layout/mobile-bottom-nav.tsx가 role prop을 받아 참여자일 때 '새 이벤트' 탭을 숨기도록 수정하고, app/(app)/layout.tsx가 getDemoViewerRole()로 역할을 조회해 그 prop을 전달한다(F007 네비게이션 요구사항).",
+      "notes": "ViewerRole 타입은 lib/demo-role.ts에서 import. 탭 배열의 href/label/icon 값 자체는 변경하지 않는다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "8b20d67d-5f4a-43f1-b04d-3d3e93618205"
+        }
+      ],
+      "createdAt": "2026-10-23T05:35:28.684Z",
+      "updatedAt": "2026-10-23T05:38:37.176Z",
+      "relatedFiles": [
+        {
+          "path": "components/layout/mobile-bottom-nav.tsx",
+          "type": "TO_MODIFY",
+          "description": "role prop에 따라 탭 구성 변경"
+        },
+        {
+          "path": "app/(app)/layout.tsx",
+          "type": "TO_MODIFY",
+          "description": "getDemoViewerRole() 조회 후 prop 전달"
+        },
+        {
+          "path": "lib/demo-role.ts",
+          "type": "DEPENDENCY",
+          "description": "ViewerRole, getDemoViewerRole"
+        }
+      ],
+      "implementationGuide": "1) components/layout/mobile-bottom-nav.tsx: 기존 `const TABS = [...]` 모듈 상수를 `function buildTabs(role: ViewerRole) { return role === 'host' ? [...3개] : [내 이벤트, 프로필 2개만]; }`로 바꾸고, `MobileBottomNav({ role }: { role: ViewerRole })`가 `buildTabs(role)`을 사용. usePathname 기반 활성 탭 강조 로직은 그대로 유지.\n2) app/(app)/layout.tsx: `import { getDemoViewerRole } from '@/lib/demo-role';` 추가, `AppLayout`을 async로 바꿔 `const role = await getDemoViewerRole();` 후 `<MobileBottomNav role={role} />`로 전달(기존 Suspense 래핑 유지).",
+      "verificationCriteria": "쿠키를 host로 설정한 상태에서 하단 nav에 3개 탭(내 이벤트/새 이벤트/프로필)이, participant로 설정한 상태에서 2개 탭(내 이벤트/프로필)만 보임을 Playwright로 확인. npx tsc --noEmit, npm run lint, npm run build 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 005(참여자 모바일 UI/UX 완성)의 최종 목표: Task 004가 \"항상 호스트\"로 완성한 /events, /events/[id], 하단 내비게이션에 참여자 뷰 분기를 추가하고 초대 링크 참여 페이지(/join/[invite_code])를 완성한다. 핵심 설계 결정: (1) 호스트/참여자는 PRD 설계상 동일 라우트를 공유하며 역할에 따라 조건부 렌더링되는데, 실제 인증/권한 시스템은 Phase 3(Task 008/010)에서 완성되므로 사용자와 합의한 대로 쿠키 기반 데모 역할 토글(gather-demo-role: host|participant, 기본값 host로 Task004 기존 동작과 100% 호환)을 쓴다. (2) 역할을 \"읽는\" lib/demo-role.ts(getDemoViewerRole, 순수 조회)와 \"쓰는\" lib/demo-role-actions.ts(\"use server\" Server Action, 쿠키 설정+리다이렉트)를 분리해, 역할을 소비하는 서버 컴포넌트(app/(app)/layout.tsx, events/page.tsx, events/[id]/page.tsx)가 쓰기 로직을 신경 쓰지 않게 한다. 토글 UI는 profile 페이지에 둔다. (3) components/layout/mobile-bottom-nav.tsx는 'use client'라 쿠키를 직접 읽지 않고 app/(app)/layout.tsx(서버)가 role을 prop으로 내려준다. (4) events/[id]/page.tsx의 `const isHost = true; // TODO(Task 005)`를 `const role = await getDemoViewerRole(); const isHost = role === 'host';`로 교체하고, 기존에 isHost 블록 밖에 있던 CopyInviteLinkButton/카카오 버튼(초대 공유)을 isHost 블록 안으로 옮겨 PRD의 \"참여자는 공유 기능 제한\"을 만족시킨다 — 참여자 목록(ParticipantCard)은 원래부터 읽기 전용이라 그대로 둔다. (5) events/page.tsx는 role==='participant'면 제목을 \"참여 중인 이벤트\"로 바꾸고 FAB를 숨긴다(더미 데이터 한계상 이벤트 목록 자체는 호스트/참여자 공통으로 DUMMY_EVENTS 전체를 보여줌 — 주석으로 명시). (6) /join/[invite_code]는 역할 토글과 무관한 완전히 별도의 공개 플로우로, lib/dummy-data.ts에 getDummyEventByInviteCode(code) 헬퍼를 추가해 이벤트를 조회하고(없으면 notFound()), 주최자 정보는 getDummyParticipantsWithProfiles(event.id)에서 role==='host'인 항목으로 표시하며, 실제 supabase.auth.getClaims()로 로그인 여부를 확인해 비로그인이면 GoogleLoginButton(신규 선택적 next prop으로 로그인 후 같은 join 페이지로 복귀), 로그인 상태면 '참여 확인' 버튼(클릭 시 toast+router.push로 이벤트 상세 이동, 실제 참여 처리는 TODO(Task 010))을 보여준다. GoogleLoginButton의 next prop은 옵셔널이라 기존 login-form.tsx/sign-up-form.tsx 호출부(prop 없이 사용 중, grep으로 확인됨)는 수정하지 않는다. (7) 새 shadcn 컴포넌트는 설치하지 않는다(기존 13개로 충분). 검증은 npx tsc --noEmit / npm run lint / npm run build 3종 + Playwright로 쿠키 전환 전후 실제 UI 차이와 join 페이지 더미 조회를 확인한다.",
+      "summary": "components/layout/mobile-bottom-nav.tsx의 모듈 상수 TABS를 buildTabs(role) 함수로 교체, role==='participant'면 '새 이벤트' 탭을 filter로 제외. app/(app)/layout.tsx는 BottomNav 서버 하위 컴포넌트에서 getDemoViewerRole()을 조회해 MobileBottomNav에 role prop으로 전달(Suspense 래핑 유지). usePathname 기반 활성 탭 강조 로직은 변경 없음. Playwright로 실제 전환 확인: 쿠키를 participant로 바꾸면 /events, /profile 모두에서 하단 nav가 2개 탭(내 이벤트/프로필)만 보이고, host로 되돌리면 3개 탭(새 이벤트 포함)이 다시 보임. npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:38:37.172Z"
+    },
+    {
+      "id": "76532d6b-594f-43bc-92db-c2252f33fe87",
+      "name": "내가 참여한 이벤트 목록 페이지 - 참여자 뷰 구현",
+      "description": "app/(app)/events/page.tsx가 getDemoViewerRole()로 역할을 조회해 participant일 때 제목을 '참여 중인 이벤트'로 바꾸고 '+ 새 이벤트 만들기' FAB를 숨기도록 한다(F007).",
+      "notes": "상태별 필터 탭(Link ?status=)은 역할과 무관하게 그대로 유지한다. EventCard/EmptyState 등 기존 렌더링 로직은 변경하지 않는다.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "8b20d67d-5f4a-43f1-b04d-3d3e93618205"
+        }
+      ],
+      "createdAt": "2026-10-23T05:35:28.684Z",
+      "updatedAt": "2026-10-23T05:40:10.095Z",
+      "relatedFiles": [
+        {
+          "path": "app/(app)/events/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "역할별 제목/FAB 분기 추가"
+        },
+        {
+          "path": "lib/demo-role.ts",
+          "type": "DEPENDENCY",
+          "description": "getDemoViewerRole"
+        }
+      ],
+      "implementationGuide": "EventsListContent에 `const role = await getDemoViewerRole();` 추가. 상단에 `<h1>{role === 'host' ? '내 이벤트' : '참여 중인 이벤트'}</h1>` 추가(기존에는 제목 없었으므로 신규 추가). FAB(`<Link href=\"/events/new\" ... sticky ...>`) 전체를 `{role === 'host' && (...)}`로 감싸 participant면 렌더링하지 않음. 더미 데이터 한계로 이벤트 목록 자체(DUMMY_EVENTS 필터 결과)는 역할과 무관하게 동일하게 보여준다는 점을 주석으로 명시(`// 더미 데이터 한계: '내가 참여한' 필터링은 Task 010에서 실제 참여 데이터로 구현`).",
+      "verificationCriteria": "참여자 역할일 때 /events에 FAB가 없고 제목이 '참여 중인 이벤트'로 보임을 Playwright로 확인, 호스트 역할로 되돌리면 FAB와 '내 이벤트' 제목이 다시 보임을 확인. npx tsc --noEmit, npm run lint, npm run build 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 005(참여자 모바일 UI/UX 완성)의 최종 목표: Task 004가 \"항상 호스트\"로 완성한 /events, /events/[id], 하단 내비게이션에 참여자 뷰 분기를 추가하고 초대 링크 참여 페이지(/join/[invite_code])를 완성한다. 핵심 설계 결정: (1) 호스트/참여자는 PRD 설계상 동일 라우트를 공유하며 역할에 따라 조건부 렌더링되는데, 실제 인증/권한 시스템은 Phase 3(Task 008/010)에서 완성되므로 사용자와 합의한 대로 쿠키 기반 데모 역할 토글(gather-demo-role: host|participant, 기본값 host로 Task004 기존 동작과 100% 호환)을 쓴다. (2) 역할을 \"읽는\" lib/demo-role.ts(getDemoViewerRole, 순수 조회)와 \"쓰는\" lib/demo-role-actions.ts(\"use server\" Server Action, 쿠키 설정+리다이렉트)를 분리해, 역할을 소비하는 서버 컴포넌트(app/(app)/layout.tsx, events/page.tsx, events/[id]/page.tsx)가 쓰기 로직을 신경 쓰지 않게 한다. 토글 UI는 profile 페이지에 둔다. (3) components/layout/mobile-bottom-nav.tsx는 'use client'라 쿠키를 직접 읽지 않고 app/(app)/layout.tsx(서버)가 role을 prop으로 내려준다. (4) events/[id]/page.tsx의 `const isHost = true; // TODO(Task 005)`를 `const role = await getDemoViewerRole(); const isHost = role === 'host';`로 교체하고, 기존에 isHost 블록 밖에 있던 CopyInviteLinkButton/카카오 버튼(초대 공유)을 isHost 블록 안으로 옮겨 PRD의 \"참여자는 공유 기능 제한\"을 만족시킨다 — 참여자 목록(ParticipantCard)은 원래부터 읽기 전용이라 그대로 둔다. (5) events/page.tsx는 role==='participant'면 제목을 \"참여 중인 이벤트\"로 바꾸고 FAB를 숨긴다(더미 데이터 한계상 이벤트 목록 자체는 호스트/참여자 공통으로 DUMMY_EVENTS 전체를 보여줌 — 주석으로 명시). (6) /join/[invite_code]는 역할 토글과 무관한 완전히 별도의 공개 플로우로, lib/dummy-data.ts에 getDummyEventByInviteCode(code) 헬퍼를 추가해 이벤트를 조회하고(없으면 notFound()), 주최자 정보는 getDummyParticipantsWithProfiles(event.id)에서 role==='host'인 항목으로 표시하며, 실제 supabase.auth.getClaims()로 로그인 여부를 확인해 비로그인이면 GoogleLoginButton(신규 선택적 next prop으로 로그인 후 같은 join 페이지로 복귀), 로그인 상태면 '참여 확인' 버튼(클릭 시 toast+router.push로 이벤트 상세 이동, 실제 참여 처리는 TODO(Task 010))을 보여준다. GoogleLoginButton의 next prop은 옵셔널이라 기존 login-form.tsx/sign-up-form.tsx 호출부(prop 없이 사용 중, grep으로 확인됨)는 수정하지 않는다. (7) 새 shadcn 컴포넌트는 설치하지 않는다(기존 13개로 충분). 검증은 npx tsc --noEmit / npm run lint / npm run build 3종 + Playwright로 쿠키 전환 전후 실제 UI 차이와 join 페이지 더미 조회를 확인한다.",
+      "summary": "app/(app)/events/page.tsx에 getDemoViewerRole() 기반 isHost 분기 추가: 제목('내 이벤트'/'참여 중인 이벤트'), 빈 상태 문구/액션 버튼(참여자는 action 없음), 하단 sticky FAB(참여자는 미렌더링) 3곳을 isHost로 조건부 처리. 상태별 필터 탭과 EventCard 목록 자체는 역할과 무관하게 그대로 유지(더미 데이터 한계를 주석으로 명시). Playwright로 실제 전환 확인: 참여자 모드에서 제목이 '참여 중인 이벤트'로 바뀌고 FAB가 사라짐, 호스트로 되돌리면 원래 모습으로 복귀. npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:40:10.090Z"
+    },
+    {
+      "id": "058eb185-5cc8-42ca-998a-9c1d86ffb179",
+      "name": "이벤트 상세 페이지 - 참여자 뷰 구현",
+      "description": "app/(app)/events/[id]/page.tsx의 `const isHost = true;` 하드코딩을 getDemoViewerRole() 기반 실제 분기로 교체하고, 초대 링크 공유 버튼들(CopyInviteLinkButton+카카오 버튼)을 isHost 블록 안으로 옮겨 참여자에게는 공유 기능이 보이지 않게 한다(F005, PRD '공유 기능 제한').",
+      "notes": "이 파일은 Task 004가 완성한 상태이므로 diff를 isHost 상수 교체 + 공유 버튼 블록 이동 2곳으로 최소화한다. Suspense+async Content 패턴은 그대로 유지.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "8b20d67d-5f4a-43f1-b04d-3d3e93618205"
+        }
+      ],
+      "createdAt": "2026-10-23T05:35:28.684Z",
+      "updatedAt": "2026-10-23T05:41:21.659Z",
+      "relatedFiles": [
+        {
+          "path": "app/(app)/events/[id]/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "isHost를 실제 역할 기반으로 교체, 공유 버튼 isHost 블록으로 이동"
+        },
+        {
+          "path": "lib/demo-role.ts",
+          "type": "DEPENDENCY",
+          "description": "getDemoViewerRole"
+        },
+        {
+          "path": "components/events/copy-invite-link-button.tsx",
+          "type": "REFERENCE",
+          "description": "isHost 블록 안으로 이동될 기존 컴포넌트"
+        }
+      ],
+      "implementationGuide": "1) `import { getDemoViewerRole } from '@/lib/demo-role';` 추가.\n2) `const isHost = true; // TODO(Task 005): 실제 참여자 role 비교로 교체`를 `const role = await getDemoViewerRole(); const isHost = role === 'host';`로 교체.\n3) 현재 `<div className=\"flex flex-wrap gap-2\"><CopyInviteLinkButton .../><Button ... 카카오톡 공유...></div>` 블록 전체를 `{isHost && (...)}`로 감싸 isHost 블록으로 이동. 기존에 isHost 블록 안에 있던 '이벤트 수정'/DeleteEventDialog 블록은 그대로 둔다(이미 isHost 조건 적용됨).\n4) 참여자 목록(ParticipantCard map), 이벤트 정보(제목/날짜/장소/상태뱃지)는 변경하지 않는다 — 이미 역할과 무관하게 항상 표시되어 PRD의 '읽기 전용 정보'/'다른 참여자 목록 보기'를 만족한다.",
+      "verificationCriteria": "참여자 역할로 더미 이벤트 상세에 접근 시 초대 링크 복사/카카오/수정/삭제 버튼이 전부 숨겨지고 참여자 목록/상태뱃지는 그대로 보임을 Playwright로 확인. 호스트 역할로 전환하면 Task 004 때와 동일하게 모든 버튼이 다시 보임을 확인. npx tsc --noEmit, npm run lint, npm run build 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 005(참여자 모바일 UI/UX 완성)의 최종 목표: Task 004가 \"항상 호스트\"로 완성한 /events, /events/[id], 하단 내비게이션에 참여자 뷰 분기를 추가하고 초대 링크 참여 페이지(/join/[invite_code])를 완성한다. 핵심 설계 결정: (1) 호스트/참여자는 PRD 설계상 동일 라우트를 공유하며 역할에 따라 조건부 렌더링되는데, 실제 인증/권한 시스템은 Phase 3(Task 008/010)에서 완성되므로 사용자와 합의한 대로 쿠키 기반 데모 역할 토글(gather-demo-role: host|participant, 기본값 host로 Task004 기존 동작과 100% 호환)을 쓴다. (2) 역할을 \"읽는\" lib/demo-role.ts(getDemoViewerRole, 순수 조회)와 \"쓰는\" lib/demo-role-actions.ts(\"use server\" Server Action, 쿠키 설정+리다이렉트)를 분리해, 역할을 소비하는 서버 컴포넌트(app/(app)/layout.tsx, events/page.tsx, events/[id]/page.tsx)가 쓰기 로직을 신경 쓰지 않게 한다. 토글 UI는 profile 페이지에 둔다. (3) components/layout/mobile-bottom-nav.tsx는 'use client'라 쿠키를 직접 읽지 않고 app/(app)/layout.tsx(서버)가 role을 prop으로 내려준다. (4) events/[id]/page.tsx의 `const isHost = true; // TODO(Task 005)`를 `const role = await getDemoViewerRole(); const isHost = role === 'host';`로 교체하고, 기존에 isHost 블록 밖에 있던 CopyInviteLinkButton/카카오 버튼(초대 공유)을 isHost 블록 안으로 옮겨 PRD의 \"참여자는 공유 기능 제한\"을 만족시킨다 — 참여자 목록(ParticipantCard)은 원래부터 읽기 전용이라 그대로 둔다. (5) events/page.tsx는 role==='participant'면 제목을 \"참여 중인 이벤트\"로 바꾸고 FAB를 숨긴다(더미 데이터 한계상 이벤트 목록 자체는 호스트/참여자 공통으로 DUMMY_EVENTS 전체를 보여줌 — 주석으로 명시). (6) /join/[invite_code]는 역할 토글과 무관한 완전히 별도의 공개 플로우로, lib/dummy-data.ts에 getDummyEventByInviteCode(code) 헬퍼를 추가해 이벤트를 조회하고(없으면 notFound()), 주최자 정보는 getDummyParticipantsWithProfiles(event.id)에서 role==='host'인 항목으로 표시하며, 실제 supabase.auth.getClaims()로 로그인 여부를 확인해 비로그인이면 GoogleLoginButton(신규 선택적 next prop으로 로그인 후 같은 join 페이지로 복귀), 로그인 상태면 '참여 확인' 버튼(클릭 시 toast+router.push로 이벤트 상세 이동, 실제 참여 처리는 TODO(Task 010))을 보여준다. GoogleLoginButton의 next prop은 옵셔널이라 기존 login-form.tsx/sign-up-form.tsx 호출부(prop 없이 사용 중, grep으로 확인됨)는 수정하지 않는다. (7) 새 shadcn 컴포넌트는 설치하지 않는다(기존 13개로 충분). 검증은 npx tsc --noEmit / npm run lint / npm run build 3종 + Playwright로 쿠키 전환 전후 실제 UI 차이와 join 페이지 더미 조회를 확인한다.",
+      "summary": "app/(app)/events/[id]/page.tsx의 `const isHost = true; // TODO(Task 005)`를 `const role = await getDemoViewerRole(); const isHost = role === 'host';`로 교체. 기존에 항상 노출되던 CopyInviteLinkButton+카카오 버튼 블록을 `{isHost && (...)}`로 감싸 호스트 전용으로 이동(PRD '공유 기능 제한' 충족). 수정/삭제 버튼 블록은 기존에도 isHost 조건이었으므로 변경 없음. 참여자 목록/상태뱃지/날짜/장소는 역할과 무관하게 그대로 유지(원래부터 읽기 전용). Playwright로 동일 더미 이벤트에서 역할 전환 양방향 확인: 참여자 모드에서는 초대복사/카카오/수정/삭제 버튼이 전부 사라지고 참여자 목록(호스트 뱃지 포함)/상태뱃지는 그대로 보임, 호스트로 되돌리면 Task 004와 동일하게 모든 버튼이 복귀. npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:41:21.656Z"
+    },
+    {
+      "id": "ac1f1ecd-64cc-4038-9cc2-7967a0d2c466",
+      "name": "초대 링크 참여 페이지 완성",
+      "description": "app/join/[invite_code]/page.tsx를 완성한다(F004): 초대 코드로 더미 이벤트를 조회해 미리보기(제목/날짜/장소/상태)와 주최자 정보를 표시하고, 실제 로그인 여부에 따라 Google 로그인 유도 또는 '참여 확인' 버튼을 보여준다. 이를 위해 lib/dummy-data.ts에 getDummyEventByInviteCode를 추가하고 components/google-login-button.tsx에 선택적 next prop을 추가한다.",
+      "notes": "lib/supabase/proxy.ts의 /join allowlist, app/auth/callback/route.ts의 next 쿼리 처리는 이미 완료되어 있으므로 수정하지 않는다. components/login-form.tsx, sign-up-form.tsx는 수정하지 않는다(prop 없이 호출 중이라 영향 없음).",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T05:35:28.684Z",
+      "updatedAt": "2026-10-23T05:43:38.613Z",
+      "relatedFiles": [
+        {
+          "path": "app/join/[invite_code]/page.tsx",
+          "type": "TO_MODIFY",
+          "description": "참여 페이지 완성"
+        },
+        {
+          "path": "lib/dummy-data.ts",
+          "type": "TO_MODIFY",
+          "description": "getDummyEventByInviteCode 추가"
+        },
+        {
+          "path": "components/google-login-button.tsx",
+          "type": "TO_MODIFY",
+          "description": "선택적 next prop 추가"
+        },
+        {
+          "path": "components/events/join-confirm-button.tsx",
+          "type": "CREATE",
+          "description": "참여 확인 버튼"
+        },
+        {
+          "path": "components/common/event-status-badge.tsx",
+          "type": "REFERENCE",
+          "description": "상태 뱃지 재사용"
+        },
+        {
+          "path": "lib/supabase/server.ts",
+          "type": "REFERENCE",
+          "description": "서버 컴포넌트용 Supabase 클라이언트"
+        }
+      ],
+      "implementationGuide": "1) lib/dummy-data.ts에 추가: `export function getDummyEventByInviteCode(code: string): Event | undefined { return DUMMY_EVENTS.find((event) => event.inviteCode === code); }`.\n2) components/google-login-button.tsx: props에 `next?: string` 추가, `supabase.auth.signInWithOAuth`의 `redirectTo`를 `next ? \\`${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}\\` : \\`${window.location.origin}/auth/callback\\``로 분기(기존 호출부가 prop 없이 쓰는 것을 grep으로 재확인했으므로 동작 불변).\n3) components/events/join-confirm-button.tsx('use client', 신규): props `{ eventId: string }`. 클릭 시 `// TODO(Task 010): 실제 Supabase 참여 처리(event_participants insert) 연동` 주석 후 `toast.success('참여가 완료되었습니다')` + `router.push(\\`/events/${eventId}\\`)`.\n4) app/join/[invite_code]/page.tsx: 기존 Suspense+async JoinContent 패턴 유지. `const event = getDummyEventByInviteCode(invite_code); if (!event) notFound();`. `const host = getDummyParticipantsWithProfiles(event.id).find((p) => p.participant.role === 'host');`. 이벤트 미리보기(제목/EventStatusBadge/날짜/장소) + 주최자 정보(host?.profile.name) 표시. `const supabase = await createClient(); const { data } = await supabase.auth.getClaims(); const isLoggedIn = !!data?.claims?.sub;` — isLoggedIn이 false면 `<GoogleLoginButton next={\\`/join/${invite_code}\\`} />`, true면 `<JoinConfirmButton eventId={event.id} />`.",
+      "verificationCriteria": "존재하는 더미 inviteCode로 접근 시 이벤트 미리보기+주최자 이름이 표시됨을 Playwright로 확인. 로그인 상태에서는 '참여 확인' 버튼이, 로그아웃 상태에서는 Google 로그인 버튼이 보임을 확인. 존재하지 않는 코드는 404. npx tsc --noEmit, npm run lint, npm run build 통과.",
+      "analysisResult": "Gather 프로젝트 ROADMAP.md Phase 2, Task 005(참여자 모바일 UI/UX 완성)의 최종 목표: Task 004가 \"항상 호스트\"로 완성한 /events, /events/[id], 하단 내비게이션에 참여자 뷰 분기를 추가하고 초대 링크 참여 페이지(/join/[invite_code])를 완성한다. 핵심 설계 결정: (1) 호스트/참여자는 PRD 설계상 동일 라우트를 공유하며 역할에 따라 조건부 렌더링되는데, 실제 인증/권한 시스템은 Phase 3(Task 008/010)에서 완성되므로 사용자와 합의한 대로 쿠키 기반 데모 역할 토글(gather-demo-role: host|participant, 기본값 host로 Task004 기존 동작과 100% 호환)을 쓴다. (2) 역할을 \"읽는\" lib/demo-role.ts(getDemoViewerRole, 순수 조회)와 \"쓰는\" lib/demo-role-actions.ts(\"use server\" Server Action, 쿠키 설정+리다이렉트)를 분리해, 역할을 소비하는 서버 컴포넌트(app/(app)/layout.tsx, events/page.tsx, events/[id]/page.tsx)가 쓰기 로직을 신경 쓰지 않게 한다. 토글 UI는 profile 페이지에 둔다. (3) components/layout/mobile-bottom-nav.tsx는 'use client'라 쿠키를 직접 읽지 않고 app/(app)/layout.tsx(서버)가 role을 prop으로 내려준다. (4) events/[id]/page.tsx의 `const isHost = true; // TODO(Task 005)`를 `const role = await getDemoViewerRole(); const isHost = role === 'host';`로 교체하고, 기존에 isHost 블록 밖에 있던 CopyInviteLinkButton/카카오 버튼(초대 공유)을 isHost 블록 안으로 옮겨 PRD의 \"참여자는 공유 기능 제한\"을 만족시킨다 — 참여자 목록(ParticipantCard)은 원래부터 읽기 전용이라 그대로 둔다. (5) events/page.tsx는 role==='participant'면 제목을 \"참여 중인 이벤트\"로 바꾸고 FAB를 숨긴다(더미 데이터 한계상 이벤트 목록 자체는 호스트/참여자 공통으로 DUMMY_EVENTS 전체를 보여줌 — 주석으로 명시). (6) /join/[invite_code]는 역할 토글과 무관한 완전히 별도의 공개 플로우로, lib/dummy-data.ts에 getDummyEventByInviteCode(code) 헬퍼를 추가해 이벤트를 조회하고(없으면 notFound()), 주최자 정보는 getDummyParticipantsWithProfiles(event.id)에서 role==='host'인 항목으로 표시하며, 실제 supabase.auth.getClaims()로 로그인 여부를 확인해 비로그인이면 GoogleLoginButton(신규 선택적 next prop으로 로그인 후 같은 join 페이지로 복귀), 로그인 상태면 '참여 확인' 버튼(클릭 시 toast+router.push로 이벤트 상세 이동, 실제 참여 처리는 TODO(Task 010))을 보여준다. GoogleLoginButton의 next prop은 옵셔널이라 기존 login-form.tsx/sign-up-form.tsx 호출부(prop 없이 사용 중, grep으로 확인됨)는 수정하지 않는다. (7) 새 shadcn 컴포넌트는 설치하지 않는다(기존 13개로 충분). 검증은 npx tsc --noEmit / npm run lint / npm run build 3종 + Playwright로 쿠키 전환 전후 실제 UI 차이와 join 페이지 더미 조회를 확인한다.",
+      "summary": "lib/dummy-data.ts에 getDummyEventByInviteCode(code) 추가(기존 함수 변경 없음). components/google-login-button.tsx에 선택적 next prop 추가(미지정 시 기존 동작과 100% 동일 — login-form.tsx/sign-up-form.tsx는 prop 없이 호출 중임을 grep으로 재확인해 수정하지 않음). components/events/join-confirm-button.tsx('use client', toast+router.push, TODO(Task 010))를 신설. app/join/[invite_code]/page.tsx를 완성: getDummyEventByInviteCode로 조회(없으면 notFound()), getDummyParticipantsWithProfiles에서 role==='host'인 항목으로 주최자 이름 표시, 실제 supabase.auth.getClaims()로 로그인 여부 분기. Playwright로 실제 확인: 호스트 뷰에서 '초대 링크 복사' 클릭 시 실제로 `/join/{inviteCode}` 형태 URL이 복사됨(navigator.clipboard 패치로 캡처), 그 코드로 /join 접속 시 이벤트 미리보기+주최자 이름(박도윤)이 표시되고 로그인 상태라 '참여 확인' 버튼이 보임, 클릭 시 해당 이벤트 상세로 정상 이동. 존재하지 않는 코드는 실제 404. 로그아웃 분기(GoogleLoginButton)는 실제 세션을 끊지 않기 위해 코드 리뷰로만 확인(단순 삼항 분기, GoogleLoginButton 자체는 기존에 실동작 검증됨). npx tsc --noEmit, npm run lint, npm run build 모두 통과.",
+      "completedAt": "2026-10-23T05:43:38.609Z"
     }
   ]
 }
