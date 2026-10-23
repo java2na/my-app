@@ -3,18 +3,9 @@ import Image from "next/image";
 
 import { EventStatusBadge } from "@/components/common/event-status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatEventDateTime } from "@/lib/format-date";
 import type { EventCardProps } from "@/lib/types/components";
 import { cn } from "@/lib/utils";
-
-function formatEventDate(eventDate: string) {
-  return new Date(eventDate).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function EventCard({
   event,
@@ -44,7 +35,7 @@ export function EventCard({
       <CardContent className="text-muted-foreground flex flex-col gap-2 text-sm">
         <div className="flex items-center gap-2">
           <CalendarIcon className="size-4 shrink-0" />
-          <span>{formatEventDate(event.eventDate)}</span>
+          <span>{formatEventDateTime(event.eventDate)}</span>
         </div>
         <div className="flex items-center gap-2">
           <MapPinIcon className="size-4 shrink-0" />

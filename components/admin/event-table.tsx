@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatShortDate } from "@/lib/format-date";
 import type { AdminEventRow } from "@/lib/types/components";
 
 const PAGE_SIZE = 20;
@@ -34,10 +35,6 @@ const STATUS_FILTER_OPTIONS = [
 ] as const;
 
 type SortKey = "eventDate" | "participantCount" | "createdAt";
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ko-KR");
-}
 
 function getSortValue(row: AdminEventRow, key: SortKey): number {
   switch (key) {
@@ -189,12 +186,12 @@ export function EventTable({ rows: initialRows }: { rows: AdminEventRow[] }) {
               <TableRow key={event.id}>
                 <TableCell className="font-medium">{event.title}</TableCell>
                 <TableCell>{hostName}</TableCell>
-                <TableCell>{formatDate(event.eventDate)}</TableCell>
+                <TableCell>{formatShortDate(event.eventDate)}</TableCell>
                 <TableCell>{participantCount}명</TableCell>
                 <TableCell>
                   <EventStatusBadge status={event.status} />
                 </TableCell>
-                <TableCell>{formatDate(event.createdAt)}</TableCell>
+                <TableCell>{formatShortDate(event.createdAt)}</TableCell>
                 <TableCell className="text-right">
                   <AdminDeleteDialog
                     trigger={

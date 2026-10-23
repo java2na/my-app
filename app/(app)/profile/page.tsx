@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { LogoutButton } from "@/components/logout-button";
 import { ProfileAvatarEditor } from "@/components/profile/profile-avatar-editor";
 import { ProfileNameEditor } from "@/components/profile/profile-name-editor";
+import { formatLongDate } from "@/lib/format-date";
 import { createClient } from "@/lib/supabase/server";
 
 async function ProfileContent() {
@@ -52,11 +53,7 @@ async function ProfileContent() {
     );
   }
 
-  const joinedAt = new Date(profile.created_at).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const joinedAt = formatLongDate(profile.created_at);
 
   const [{ count: createdEventCount }, { count: joinedEventCount }] =
     await Promise.all([

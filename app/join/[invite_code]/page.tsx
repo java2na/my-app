@@ -12,6 +12,7 @@ import {
   getEventHostProfile,
   isEventParticipant,
 } from "@/lib/events-queries";
+import { formatEventDateTime } from "@/lib/format-date";
 import { createClient } from "@/lib/supabase/server";
 
 async function JoinContent({
@@ -28,13 +29,7 @@ async function JoinContent({
 
   const host = await getEventHostProfile(event.createdBy);
 
-  const eventDate = new Date(event.eventDate).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const eventDate = formatEventDateTime(event.eventDate);
 
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();

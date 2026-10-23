@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatShortDate } from "@/lib/format-date";
 import type { AdminUserRow } from "@/lib/types/components";
 
 const PAGE_SIZE = 20;
@@ -34,10 +35,6 @@ const ROLE_FILTER_OPTIONS = [
 ] as const;
 
 type SortKey = "createdAt" | "createdEventCount" | "joinedEventCount";
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ko-KR");
-}
 
 function getInitial(name: string | null) {
   return name ? name.trim().charAt(0).toUpperCase() : "?";
@@ -210,7 +207,7 @@ export function UserTable({ rows: initialRows }: { rows: AdminUserRow[] }) {
                     {user.role === "admin" ? "관리자" : "일반 사용자"}
                   </Badge>
                 </TableCell>
-                <TableCell>{formatDate(user.createdAt)}</TableCell>
+                <TableCell>{formatShortDate(user.createdAt)}</TableCell>
                 <TableCell>{createdEventCount}개</TableCell>
                 <TableCell>{joinedEventCount}개</TableCell>
                 <TableCell className="text-right">
