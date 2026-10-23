@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -39,6 +40,7 @@ export default function RootLayout({
           {children}
           <Toaster />
         </ThemeProvider>
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID!} />
       </body>
     </html>
   );

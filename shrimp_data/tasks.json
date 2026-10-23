@@ -1672,6 +1672,228 @@
       "analysisResult": "Task 008(인증 시스템 및 권한 관리)의 목표는 '처음부터 인증을 구현'하는 것이 아니라, Task 004~007에서 이미 구현된 이메일/Google OAuth 로그인·로그아웃·프로필 자동생성(components/google-login-button.tsx, app/auth/callback/route.ts, login-form.tsx/sign-up-form.tsx, handle_new_user 트리거, logout-button.tsx, lib/supabase/proxy.ts의 getClaims 기반 미인증 리다이렉트)을 재사용하면서, 코드 조사로 확인된 3가지 실제 격차만 메우는 것이다: (1) lib/supabase/proxy.ts 64행의 `TODO(Task 008)` — /admin/* 경로에 role==='admin' 체크가 전혀 없어 인증만 되면 누구나 관리자 페이지에 접근 가능한 문제, (2) profiles 테이블 RLS update 정책이 컬럼 제한 없이 `auth.uid()=id`만 검사해 일반 사용자가 자기 role을 'admin'으로 직접 올릴 수 있는 권한 상승 취약점(신규 발견, 기존 마이그레이션 어디에도 방어 로직 없음), (3) AdminSidebar가 재사용하는 LogoutButton이 항상 /auth/login으로 보내 관리자 로그아웃 후 /admin/login으로 돌아가지 못하는 UX 결함(신규 발견). 여기에 Google OAuth 프로필 매핑이 실제로 올바른지 실측 검증과, 이 모든 변경을 검증하는 Playwright MCP E2E 테스트(인증 플로우 + 권한 격리 + 권한 상승 차단)를 추가한다. 모든 작업은 Supabase 클라이언트 3분류 경계, getClaims() 우선 사용, 기존 마이그레이션 파일명/트리거 보안 패턴(security definer, search_path='')을 그대로 따른다. 트리거 설계 시 Postgres의 BEFORE UPDATE 트리거가 RLS보다 낮은 레벨에서 항상 실행된다는 사실 때문에, 향후 Task 011에서 관리자가 service_role로 다른 사용자의 role을 변경하는 기능까지 막아버리지 않도록 트리거 안에 service_role 예외 조건을 반드시 포함해야 한다.",
       "summary": "Playwright MCP로 실행한 체크리스트 결과: (1) 이메일/비밀번호 회원가입(whfkddk+e2e008@gmail.com, 테스트 후 삭제) → profiles 자동 생성(role='user' 기본값) 확인. (2) 로그인 → /profile에서 이메일/가입일 정상 표시. (3) 비인증 /protected, /admin/dashboard 접근 시 각각 /auth/login, /admin/login 리다이렉트 확인. (4) role='user' 계정의 /admin/dashboard 접근 거부(→/admin/login), service_role 시뮬레이션으로 role='admin' 시딩 후 정상 접근 확인. (5) 로그인 상태에서 실제 Supabase REST API(PATCH /rest/v1/profiles, 사용자 자신의 access_token)로 role self-escalation 시도 → 응답 200이지만 return=representation 바디에 role이 요청값(admin)이 아닌 기존값(user)으로 와서 트리거가 실제 공격 경로를 막는 것을 서버 응답 자체로 증명, SQL 재조회로도 재확인. (6) 로그아웃 후 /protected, /admin/dashboard 재접근 시 리다이렉트 재확인, 관리자 사이드바 로그아웃은 /admin/login으로 이동 확인. (7) 잘못된 비밀번호 로그인 시 'Invalid login credentials' 에러 표시 확인. (8) Google OAuth: 브라우저에 이미 로그인된 실제 Google 세션으로 '계속하기' 클릭 시 실제 전체 OAuth 플로우(authorize→accounts.google.com→Supabase callback)가 완주되어 실제 Google 계정(whfkddk@gmail.com, 기존 admin 프로필)으로 로그인됨. 이 과정에서 raw_user_meta_data와 profiles.full_name/avatar_url을 비교해 **예상 밖의 실제 버그를 발견**: handle_new_user는 auth.users INSERT에만 반응하므로, 이메일 가입 후 나중에 Google 계정을 연동(동일 row UPDATE)하면 profiles.full_name/avatar_url이 영원히 null로 남는 문제가 실재했음(실제 운영 계정에서 재현 확인). 원래 계획된 4개 작업 범위를 벗어나지만 Task 008의 '프로필 자동 생성 로직' 요구사항에 직접 해당하는 결함이라 판단해, fill-if-null 방식의 AFTER UPDATE OF raw_user_meta_data 트리거(sync_profile_from_auth_user, 마이그레이션 20261023071500)를 추가로 구현하고 실제 계정에서 수정 확인(이름 '김동원', 아바타 정상 표시, role='admin' 불변). mcp__supabase__get_advisors 보안 재확인 결과 신규 경고 없음. 테스트 중 생성한 임시 계정은 삭제해 운영 데이터에 흔적을 남기지 않음.",
       "completedAt": "2026-10-23T07:20:01.003Z"
+    },
+    {
+      "id": "fec4241a-73ad-4ac7-82d6-f072cd810206",
+      "name": "Vercel 프로젝트 연결 및 환경 변수 구성",
+      "description": "GitHub 저장소(java2na/my-app)를 Vercel에 Import해 프로젝트를 생성하고, 코드 grep으로 확인된 정확히 3개의 환경변수(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY)를 Vercel 대시보드의 Production/Preview/Development 전 scope에 등록한다. 동일한 3개 키를 GitHub repo Settings → Secrets and variables → Actions에도 등록한다(다음 작업의 CI 빌드 단계에서 사용). vercel.json은 Next.js가 Vercel에서 zero-config로 자동 감지되므로 특별한 커스텀 설정이 필요하지 않는 한 생성하지 않는다(과잉 설계 금지). 리포지토리에는 실제 값 대신 키 이름+placeholder만 담은 .env.example을 신규 생성해 커밋한다(실제 시크릿 값은 절대 커밋 금지).",
+      "notes": "vercel.json은 만들지 않는다 — Next.js App Router는 Vercel에서 자동 감지되어 별도 설정이 불필요하다. 실제 환경변수 값은 이 세션에서 다루지 않고(보안), 사용자가 Vercel/GitHub UI에서 직접 입력하도록 안내한다.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2026-10-23T16:53:31.225Z",
+      "updatedAt": "2026-10-23T17:22:10.521Z",
+      "relatedFiles": [
+        {
+          "path": ".env.example",
+          "type": "CREATE",
+          "description": "커밋 가능한 환경변수 키 목록(값 없음)"
+        },
+        {
+          "path": "lib/supabase/client.ts",
+          "type": "REFERENCE",
+          "description": "필요한 env var 확인용"
+        },
+        {
+          "path": "lib/supabase/server.ts",
+          "type": "REFERENCE",
+          "description": "필요한 env var 확인용"
+        },
+        {
+          "path": "lib/supabase/admin.ts",
+          "type": "REFERENCE",
+          "description": "SUPABASE_SERVICE_ROLE_KEY 사용 확인용"
+        },
+        {
+          "path": "lib/supabase/proxy.ts",
+          "type": "REFERENCE",
+          "description": "필요한 env var 확인용"
+        }
+      ],
+      "implementationGuide": "1) Vercel 대시보드(또는 CLI `vercel link`)에서 java2na/my-app GitHub 저장소를 Import.\n2) Project Settings → Environment Variables에 3개 키를 Production/Preview/Development 모두에 추가(실제 값은 .env.local에 있는 것과 동일하게 Supabase 대시보드에서 재확인 후 입력).\n3) GitHub repo → Settings → Secrets and variables → Actions에 동일 3개 키를 Repository secret으로 추가.\n4) .env.example 신규 생성: `NEXT_PUBLIC_SUPABASE_URL=`\\n`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=`\\n`SUPABASE_SERVICE_ROLE_KEY=` (값은 빈 문자열 또는 주석 없이 키만).\n5) 변경사항 커밋(.env.example만).",
+      "verificationCriteria": "Vercel 프로젝트가 생성되어 GitHub 저장소와 연결되어 있고 대시보드에 3개 환경변수가 3개 scope 모두 등록되어 있다. GitHub Actions Secrets에도 동일 3개가 등록되어 있다. .env.example이 리포지토리에 커밋되어 있고 실제 시크릿 값은 포함하지 않는다.",
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다.",
+      "summary": "Vercel CLI(npx vercel) 로그인 후 java2na/my-app을 신규 Vercel 프로젝트(whfkddk-4720/my-app)로 링크하고 GitHub 연결까지 완료(중간에 사용자가 Vercel 계정 GitHub Login Connection 추가 및 Vercel GitHub App 저장소 권한 부여 2가지를 직접 처리). .env.local 값을 터미널에 노출하지 않고 3개 환경변수(NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/SUPABASE_SERVICE_ROLE_KEY)를 Vercel Production/Preview/Development 9개 조합 전부에 등록(vercel env ls로 확인). GitHub CLI를 winget으로 설치하고 사용자가 브라우저로 gh auth login 완료 후 동일 3개 키를 GitHub Actions Secrets(java2na/my-app)에도 등록(gh secret list로 확인). .env.example을 신규 생성했는데, vercel link가 .gitignore에 중복 추가한 `.env*` 패턴이 .env.example까지 무시시키는 부작용을 발견해 중복 라인을 제거, .env.example이 정상적으로 untracked 상태(커밋 가능)로 잡히는 것을 git status로 확인. 실제 시크릿 값은 어떤 로그/출력에도 노출하지 않았다. 커밋은 사용자 요청 시 진행하기로 하고 보류.",
+      "completedAt": "2026-10-23T17:22:10.469Z"
+    },
+    {
+      "id": "31d0f81c-d34a-4cdf-9734-e04ec7b72bc4",
+      "name": "GitHub Actions CI 파이프라인 구축",
+      "description": ".github/workflows/ci.yml을 신설해 push/PR 시 npm ci → npm run lint → npm run type-check → npm run build 4단계를 실행한다. package.json에 실제로 정의된 스크립트만 사용하며(존재하지 않는 npm run check-all 등은 사용하지 않음), 테스트 스크립트가 없으므로 테스트 실행 단계는 포함하지 않는다. build 단계는 이전 작업에서 등록한 GitHub Secrets(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY)를 env로 주입한다.",
+      "notes": "cacheComponents:true 플래그 때문에 build가 실패하면 원인(동적 API 미사용 세그먼트의 정적 프리렌더링 시도 등)을 분석해 해당 page.tsx에 `export const dynamic = 'force-dynamic'`을 추가하는 방식으로 대응 — 단 실제 실패가 확인된 페이지에 한정해서만 추가한다(사전에 추측으로 전체 페이지에 넣지 않음).",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "fec4241a-73ad-4ac7-82d6-f072cd810206"
+        }
+      ],
+      "createdAt": "2026-10-23T16:53:31.225Z",
+      "updatedAt": "2026-10-23T17:25:57.973Z",
+      "relatedFiles": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "type": "CREATE",
+          "description": "CI 파이프라인 정의"
+        },
+        {
+          "path": "package.json",
+          "type": "REFERENCE",
+          "description": "실제 존재하는 스크립트 목록 확인용"
+        }
+      ],
+      "implementationGuide": "1) .github/workflows/ci.yml 작성:\n```yaml\nname: CI\non:\n  push:\n    branches: [master]\n  pull_request:\n jobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n          cache: npm\n      - run: npm ci\n      - run: npm run lint\n      - run: npm run type-check\n      - run: npm run build\n        env:\n          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}\n          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}\n          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\n```\n2) PR을 올려 Actions 탭에서 4단계가 모두 통과하는지 실제로 확인한다(로컬에서 먼저 `npm run lint && npm run type-check && npm run build`로 사전 검증).\n3) master에 보호 브랜치 규칙(필수 상태 검사)을 걸지는 이번 작업 범위 밖(과잉 설계 금지, 요청 시 별도 작업으로).",
+      "verificationCriteria": "GitHub Actions 탭에서 ci.yml 워크플로우가 push/PR 트리거로 실행되고 lint/type-check/build 3단계가 모두 성공(초록 체크)한다. 존재하지 않는 스크립트를 호출하지 않는다.",
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다.",
+      "summary": ".github/workflows/ci.yml을 신설해 push/PR 트리거로 npm ci → lint → type-check → build 4단계를 실행하도록 구성했다(package.json에 실제 존재하는 스크립트만 사용, 테스트 스크립트는 없어 미포함). build 단계는 Task1에서 등록한 GitHub Actions Secrets(NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/SUPABASE_SERVICE_ROLE_KEY)를 env로 주입한다. 로컬에서 lint/type-check/build를 먼저 통과시켜 cacheComponents:true 빌드 리스크를 사전 검증(PPR 적용된 페이지들이 정상적으로 ◐ 표시로 빌드됨, 에러 없음). .env.example + ci.yml만 커밋해 master에 push하고, gh run watch로 실제 GitHub Actions 실행을 모니터링해 lint/type-check/build 3단계가 모두 초록 체크로 통과함을 확인했다(run ID 39994895132, 33초 소요). Node 20 deprecated 경고는 GitHub 플랫폼 공지일 뿐 실패 요인이 아니므로 그대로 둠.",
+      "completedAt": "2026-10-23T17:25:57.946Z"
+    },
+    {
+      "id": "72283ff5-694d-4315-9e24-0023b8288bd7",
+      "name": "Sentry 에러 모니터링 연동",
+      "description": "@sentry/nextjs를 설치하고 Sentry 공식 Next.js 15 설정(클라이언트/서버/엣지 3개 config + next.config.ts의 withSentryConfig 래핑, 필요 시 instrumentation.ts)을 적용해 프로덕션 에러를 Sentry 대시보드로 수집한다. DSN은 하드코딩하지 않고 NEXT_PUBLIC_SENTRY_DSN 환경변수로 분리한다.",
+      "notes": "proxy.ts는 Edge 런타임에서 실행되므로 sentry.edge.config.ts가 이를 커버한다 — 기존 3분리(client/server/proxy) 아키텍처와 자연스럽게 맞물리는 지점이므로 별도 추상화를 추가하지 않는다.",
+      "status": "in_progress",
+      "dependencies": [],
+      "createdAt": "2026-10-23T16:53:31.225Z",
+      "updatedAt": "2026-10-23T17:26:18.413Z",
+      "relatedFiles": [
+        {
+          "path": "next.config.ts",
+          "type": "TO_MODIFY",
+          "description": "withSentryConfig로 래핑, cacheComponents:true 보존 확인"
+        },
+        {
+          "path": "sentry.client.config.ts",
+          "type": "CREATE",
+          "description": "Sentry 마법사 생성"
+        },
+        {
+          "path": "sentry.server.config.ts",
+          "type": "CREATE",
+          "description": "Sentry 마법사 생성"
+        },
+        {
+          "path": "sentry.edge.config.ts",
+          "type": "CREATE",
+          "description": "Sentry 마법사 생성, proxy.ts의 edge 런타임 커버"
+        },
+        {
+          "path": "package.json",
+          "type": "TO_MODIFY",
+          "description": "@sentry/nextjs 의존성 추가"
+        },
+        {
+          "path": ".env.example",
+          "type": "TO_MODIFY",
+          "description": "NEXT_PUBLIC_SENTRY_DSN 키 추가"
+        },
+        {
+          "path": "lib/supabase/proxy.ts",
+          "type": "REFERENCE",
+          "description": "edge 런타임 경계 확인용"
+        }
+      ],
+      "implementationGuide": "1) `npx @sentry/wizard@latest -i nextjs`를 실행해 Sentry 공식 마법사로 자동 설정(계정/프로젝트 선택, sentry.client.config.ts/sentry.server.config.ts/sentry.edge.config.ts 생성, next.config.ts에 withSentryConfig 자동 래핑)을 완료한다. 마법사가 기존 next.config.ts의 cacheComponents:true 설정을 보존하는지 diff로 확인한다.\n2) 생성된 DSN을 NEXT_PUBLIC_SENTRY_DSN으로 .env.example과 Vercel 환경변수에 추가(이전 작업에서 등록한 3개 키에 추가).\n3) 의도적으로 에러를 발생시키는 임시 코드로 Sentry 대시보드에 이벤트가 수집되는지 1회 확인 후 임시 코드는 제거.",
+      "verificationCriteria": "임시로 발생시킨 에러가 Sentry 대시보드 Issues에 실제로 나타난다. next.config.ts에 cacheComponents:true가 여전히 존재하며 빌드가 성공한다.",
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다."
+    },
+    {
+      "id": "4d9bef59-938e-49b1-aa88-7893afdb0b06",
+      "name": "Google Analytics(GA4) 연동",
+      "description": "@next/third-parties의 GoogleAnalytics 컴포넌트를 app/layout.tsx에 추가해 GA4 추적을 연동한다. 커스텀 script 태그를 직접 삽입하는 대신 Next.js 15 공식 권장 패턴을 사용해 Task 014의 성능 목표(FCP/TTI)에 미치는 영향을 최소화한다. 측정 ID는 NEXT_PUBLIC_GA_MEASUREMENT_ID 환경변수로 분리한다.",
+      "notes": "GA 연동은 app/layout.tsx 한 곳만 수정하며 기존 다크모드/semantic 토큰 스타일링 규칙과 무관하므로 건드리지 않는다.",
+      "status": "in_progress",
+      "dependencies": [],
+      "createdAt": "2026-10-23T16:53:31.225Z",
+      "updatedAt": "2026-10-23T17:26:18.730Z",
+      "relatedFiles": [
+        {
+          "path": "app/layout.tsx",
+          "type": "TO_MODIFY",
+          "description": "GoogleAnalytics 컴포넌트 추가"
+        },
+        {
+          "path": "package.json",
+          "type": "TO_MODIFY",
+          "description": "@next/third-parties 의존성 추가"
+        },
+        {
+          "path": ".env.example",
+          "type": "TO_MODIFY",
+          "description": "NEXT_PUBLIC_GA_MEASUREMENT_ID 키 추가"
+        }
+      ],
+      "implementationGuide": "1) `npm install @next/third-parties` 설치.\n2) app/layout.tsx의 RootLayout에서 `</body>` 직전(기존 ThemeProvider/Toaster 구조는 그대로 유지)에 `import { GoogleAnalytics } from '@next/third-parties/google'` 후 `<GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID!} />` 추가.\n3) NEXT_PUBLIC_GA_MEASUREMENT_ID를 .env.example과 Vercel 환경변수(Production/Preview/Development)에 추가.\n4) 배포 후 GA4 실시간 리포트에서 페이지뷰 이벤트가 수집되는지 확인(이는 다음 통합 테스트 작업에서 같이 검증 가능).",
+      "verificationCriteria": "app/layout.tsx에 GoogleAnalytics 컴포넌트가 추가되어 빌드가 성공하고, 배포 후 GA4 실시간 리포트에서 최소 1건의 페이지뷰가 수집된다.",
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다."
+    },
+    {
+      "id": "4f006bbd-c501-48af-adc4-e248dcf0a845",
+      "name": "프로덕션 배포 및 cacheComponents 빌드 검증, 도메인 연결",
+      "description": "Sentry/GA 연동이 반영된 master 브랜치를 Vercel에 프로덕션 배포하고, cacheComponents:true 플래그 하에서 실제 프로덕션 빌드가 정상 동작하는지 확인한다. 사용자가 보유한 커스텀 도메인이 있으면 연결하고, 없으면 Vercel 기본 제공 도메인(*.vercel.app)으로 완료 처리한다.",
+      "notes": "도메인 연결은 사용자 보유 여부에 따라 선택적 단계이며, 없다고 해서 이 작업이 미완료로 간주되지 않는다(불필요한 블로킹 방지).",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "fec4241a-73ad-4ac7-82d6-f072cd810206"
+        },
+        {
+          "taskId": "72283ff5-694d-4315-9e24-0023b8288bd7"
+        },
+        {
+          "taskId": "4d9bef59-938e-49b1-aa88-7893afdb0b06"
+        }
+      ],
+      "createdAt": "2026-10-23T16:53:31.225Z",
+      "updatedAt": "2026-10-23T16:53:31.225Z",
+      "relatedFiles": [
+        {
+          "path": "next.config.ts",
+          "type": "REFERENCE",
+          "description": "cacheComponents:true 빌드 동작 확인용"
+        }
+      ],
+      "implementationGuide": "1) master 브랜치 push로 Vercel 프로덕션 배포 트리거(또는 Vercel 대시보드에서 수동 Deploy).\n2) Vercel 빌드 로그에서 next build가 cacheComponents:true 하에 에러 없이 완료되는지 확인. 실패 시 Sentry wizard가 생성한 변경과 cacheComponents 상호작용을 원인으로 우선 조사.\n3) 사용자에게 보유 커스텀 도메인 여부를 확인: 있으면 Vercel Project Settings → Domains에 추가하고 DNS 레코드(CNAME/A)를 안내, 없으면 기본 *.vercel.app 도메인으로 완료.\n4) 배포된 프로덕션 URL에 접속해 홈페이지가 정상 렌더링되는지 1차 확인.",
+      "verificationCriteria": "Vercel 프로덕션 배포가 성공 상태(Ready)이며, 프로덕션 URL에서 홈페이지가 정상 로드된다. 커스텀 도메인이 있다면 연결 완료, 없다면 *.vercel.app 도메인 사용으로 완료 처리.",
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다."
+    },
+    {
+      "id": "0c319aed-3815-4657-8c37-b7a31dea2a26",
+      "name": "배포 후 Playwright MCP 통합 테스트",
+      "description": "프로덕션 URL을 대상으로 Playwright MCP를 사용해 Task 008~011에서 검증된 핵심 플로우(이메일/Google 로그인, 이벤트 생성, 초대 링크 참여, 실시간 참여자 업데이트, 관리자 대시보드 접근 및 권한 격리)를 축약 재검증한다. 이 작업은 API/비즈니스 로직 검증에 해당하므로 Playwright MCP 테스트 체크리스트를 필수로 포함한다.",
+      "notes": "Sentry/GA가 실제로 이벤트를 수집하는지도 이 테스트 중에 함께 확인 가능(에러 유발 1회, 페이지 이동 후 GA 실시간 리포트 확인).",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "4f006bbd-c501-48af-adc4-e248dcf0a845"
+        }
+      ],
+      "createdAt": "2026-10-23T16:53:31.225Z",
+      "updatedAt": "2026-10-23T16:53:31.225Z",
+      "relatedFiles": [
+        {
+          "path": "app/auth/login",
+          "type": "REFERENCE",
+          "description": "로그인 플로우 E2E 대상"
+        },
+        {
+          "path": "app/(app)/events",
+          "type": "REFERENCE",
+          "description": "이벤트 생성/목록 E2E 대상"
+        },
+        {
+          "path": "app/join/[invite_code]",
+          "type": "REFERENCE",
+          "description": "초대 참여 E2E 대상"
+        },
+        {
+          "path": "app/admin/(dashboard)",
+          "type": "REFERENCE",
+          "description": "관리자 권한 격리 E2E 대상"
+        }
+      ],
+      "implementationGuide": "프로덕션 URL(Vercel 배포 URL 또는 연결된 커스텀 도메인)에 대해 Playwright MCP로 다음을 순서대로 수행: 로그인 → 이벤트 생성 → 초대 링크 복사 → 새 세션/시크릿 컨텍스트에서 초대 링크로 참여 → 원래 세션에서 실시간 참여자 수 증가 확인 → 관리자 계정으로 /admin/dashboard 접근 → 일반 계정으로 /admin/dashboard 접근 시 /admin/login 리다이렉트 확인. 테스트 후 생성한 더미 이벤트/참여 기록은 정리한다.",
+      "verificationCriteria": "## 테스트 체크리스트\n- [ ] 이메일/비밀번호 로그인 성공 후 /events로 정상 이동\n- [ ] 이벤트 생성 성공 및 초대 링크 복사 동작\n- [ ] 시크릿 컨텍스트에서 초대 링크 접속 → 로그인 후 참여 확인\n- [ ] 원래 세션에서 Realtime으로 참여자 수가 자동 갱신됨\n- [ ] 관리자 계정으로 /admin/dashboard 접근 성공, 지표가 실제 데이터와 일치\n- [ ] 일반 계정(비관리자)으로 /admin/dashboard 접근 시 /admin/login으로 리다이렉트됨\n- [ ] 미인증 상태로 보호된 라우트 접근 시 /auth/login으로 리다이렉트됨(에러 케이스)\n- [ ] 테스트용으로 생성한 이벤트/참여 데이터 정리 완료",
+      "analysisResult": "Task 015(배포 및 모니터링): Gather(Next.js 15 App Router + Supabase, Vercel 전제로 이미 작성된 코드)를 Vercel에 프로덕션 배포하고 GitHub Actions CI, Sentry 에러 모니터링, Google Analytics(GA4)를 연동한다. 조사로 확인된 사실: 필요한 환경변수는 정확히 3개(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY) — lib/supabase/{client,server,proxy,admin}.ts, lib/utils.ts 전체 grep으로 확인. app/layout.tsx, components/tutorial/sign-up-user-steps.tsx가 이미 Vercel 자동 주입 변수(VERCEL_URL/VERCEL_ENV/VERCEL_PROJECT_PRODUCTION_URL)를 사용 중이라 프로젝트가 Vercel 배포를 전제로 설계됨. package.json 스크립트는 dev/build/start/lint/type-check(tsc --noEmit)/format/format:check/prepare(husky)뿐이고 테스트 스크립트 없음 — CI는 이 스크립트만 사용. vercel.json/.github/workflows/Sentry/GA 관련 코드는 전혀 없음(신규). git remote origin은 https://github.com/java2na/my-app.git. next.config.ts에 cacheComponents:true(실험 플래그) 설정됨. app 전체에 export const dynamic/generateStaticParams가 없고 8개 page.tsx가 top-level에서 next/headers 기반 createClient()를 호출하므로 Next.js가 해당 세그먼트를 동적 렌더링으로 처리해 빌드타임에 실제 Supabase 네트워크 접속이 필요 없을 가능성이 높음(단, 실제 빌드 1회로 검증 필요). 모든 하위 작업은 CLAUDE.md의 Supabase 클라이언트 3분리(client/server/proxy) 경계와 기존 스타일링 규칙을 건드리지 않고, 최소 침습적으로 기존 app/layout.tsx·next.config.ts에만 추가한다."
     }
   ]
 }
